@@ -1,0 +1,286 @@
+import React from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import {
+  HardDrive,
+  Folder,
+  FileText,
+  TrendingUp,
+  RefreshCw
+} from 'lucide-react'
+
+function StatsPanel({ stats, loading }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RefreshCw className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No statistics available</p>
+      </div>
+    )
+  }
+
+  const { user_storage, quota, file_types } = stats
+
+  // Prepare data for pie chart (top 8 file types to avoid clutter)
+  const fileTypeEntries = Object.entries(file_types || {})
+    .sort(([, a], [, b]) => b - a)
+  
+  const topFileTypes = fileTypeEntries.slice(0, 8)
+  const otherCount = fileTypeEntries.slice(8).reduce((sum, [, count]) => sum + count, 0)
+  
+  const fileTypeData = topFileTypes.map(([name, count]) => ({
+    name: name === 'unknown' ? 'Other' : name.toUpperCase().replace('.', ''),
+    value: count,
+  }))
+  
+  // Add "Others" category if there are more file types
+  if (otherCount > 0) {
+    fileTypeData.push({
+      name: 'Others',
+      value: otherCount,
+    })
+  }
+
+  // Professional color palette
+  const COLORS = [
+    '#0ea5e9', // Primary blue
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6', // Purple
+    '#a855f7', // Purple
+    '#ec4899', // Pink
+    '#f59e0b', // Amber
+    '#10b981', // Green
+    '#6b7280', // Gray for Others
+  ]
+
+  const StatCard = ({ icon: Icon, title, value, subtitle, colorClass = 'bg-primary-100 text-primary-600' }) => (
+    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+          {subtitle && (
+            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          )}
+        </div>
+        <div className={`p-3 rounded-full ${colorClass}`}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Storage Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          icon={HardDrive}
+          title="Total Quota"
+          value={quota?.total?.formatted || '0 B'}
+          subtitle="Your allocated storage"
+          colorClass="bg-primary-100 text-primary-600"
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="Free Space"
+          value={quota?.free?.formatted || '0 B'}
+          subtitle={`${quota?.free_percentage?.toFixed(1) || 0}% available`}
+          colorClass="bg-green-100 text-green-600"
+        />
+        <StatCard
+          icon={Folder}
+          title="Your Files"
+          value={user_storage?.total_files || 0}
+          subtitle={`${user_storage?.total_size?.formatted || '0 B'} total`}
+          colorClass="bg-blue-100 text-blue-600"
+        />
+        <StatCard
+          icon={FileText}
+          title="Used Space"
+          value={quota?.used?.formatted || '0 B'}
+          subtitle={`${quota?.used_percentage?.toFixed(1) || 0}% of quota`}
+          colorClass="bg-orange-100 text-orange-600"
+        />
+      </div>
+
+      {/* Quota Usage Visualization */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Storage Quota</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Progress Bar */}
+          <div>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">Used</span>
+                  <span className="font-medium text-gray-900">
+                    {quota?.used?.formatted || '0 B'} / {quota?.total?.formatted || '0 B'}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div
+                    className="bg-primary-600 h-4 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${quota?.used_percentage || 0}%`,
+                    }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {quota?.used_percentage?.toFixed(1) || 0}% of your quota used
+                </p>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">Free</span>
+                  <span className="font-medium text-gray-900">
+                    {quota?.free?.formatted || '0 B'}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div
+                    className="bg-green-500 h-4 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${quota?.free_percentage || 0}%`,
+                    }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {quota?.free_percentage?.toFixed(1) || 0}% of your quota available
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* File Types Chart */}
+          {fileTypeData.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                File Types Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={fileTypeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    innerRadius={50}
+                    paddingAngle={2}
+                    dataKey="value"
+                    animationBegin={0}
+                    animationDuration={800}
+                  >
+                    {fileTypeData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        stroke="#fff"
+                        strokeWidth={2}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      fontSize: '14px'
+                    }}
+                    formatter={(value, name, props) => {
+                      const total = fileTypeData.reduce((sum, item) => sum + item.value, 0)
+                      const percentage = ((value / total) * 100).toFixed(1)
+                      return [`${value} files (${percentage}%)`, props.payload.name]
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconType="circle"
+                    wrapperStyle={{
+                      paddingTop: '20px',
+                      fontSize: '13px'
+                    }}
+                    formatter={(value, entry) => {
+                      const total = fileTypeData.reduce((sum, item) => sum + item.value, 0)
+                      const item = fileTypeData.find(d => d.name === value)
+                      const percentage = item ? ((item.value / total) * 100).toFixed(1) : '0'
+                      return `${value} (${percentage}%)`
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Detailed Statistics */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">
+          Detailed Statistics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">
+              Your Storage
+            </h3>
+            <dl className="space-y-2">
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Total Files:</dt>
+                <dd className="font-medium text-gray-900">
+                  {user_storage?.total_files || 0}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Total Size:</dt>
+                <dd className="font-medium text-gray-900">
+                  {user_storage?.total_size?.formatted || '0 B'}
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">
+              Your Quota
+            </h3>
+            <dl className="space-y-2">
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Total Quota:</dt>
+                <dd className="font-medium text-gray-900">
+                  {quota?.total?.formatted || '0 B'}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Used:</dt>
+                <dd className="font-medium text-gray-900">
+                  {quota?.used?.formatted || '0 B'} (
+                  {quota?.used_percentage?.toFixed(1) || 0}%)
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Free:</dt>
+                <dd className="font-medium text-gray-900">
+                  {quota?.free?.formatted || '0 B'} (
+                  {quota?.free_percentage?.toFixed(1) || 0}%)
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default StatsPanel
