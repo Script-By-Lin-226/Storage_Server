@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
-      allowedHosts: ['ab68163a464b.ngrok-free.app'],
+      allowedHosts: ['2411777b9be2.ngrok-free.app'],
       proxy: {
         '/api': {
           target: proxyTarget,

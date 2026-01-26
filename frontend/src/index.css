@@ -67,3 +67,16 @@ body {
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
 }
+
+/* Mobile: minimum touch target size */
+@media (max-width: 640px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Smooth horizontal scroll on iOS */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}

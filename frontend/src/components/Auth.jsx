@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import axios from 'axios'
 import {
   LogIn,
@@ -13,9 +14,12 @@ import {
   ArrowRight,
   CheckCircle,
   XCircle,
-  Sparkles,
-  Shield
+  Moon,
+  Sun
 } from 'lucide-react'
+
+const inputClass =
+  'w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 dark:bg-gray-700 focus:bg-white dark:focus:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400'
 
 function Auth() {
   const [mode, setMode] = useState('login') // 'login', 'register', 'forgot'
@@ -30,6 +34,7 @@ function Auth() {
   const [loading, setLoading] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const { login } = useAuth()
+  const { dark, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -137,93 +142,98 @@ function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-primary-100 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative overflow-hidden bg-gradient-to-br from-primary-50 via-primary-100 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-        <div className="absolute top-40 right-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-200 dark:bg-primary-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-blue-200 dark:bg-blue-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-purple-200 dark:bg-purple-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob animation-delay-4000" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Card Container with Animation */}
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-8 md:p-10 border border-white/20 transform transition-all duration-500 hover:shadow-3xl">
-          {/* Header with Icon Animation */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-500 to-blue-600 rounded-2xl mb-4 transform transition-all duration-300 hover:scale-110 hover:rotate-3 shadow-lg">
-              {mode === 'login' && <LogIn className="w-10 h-10 text-white" />}
-              {mode === 'register' && <UserPlus className="w-10 h-10 text-white" />}
-              {mode === 'forgot' && <Mail className="w-10 h-10 text-white" />}
+        <div className="relative bg-white dark:bg-gray-800 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 md:p-10 border border-gray-200/50 dark:border-gray-700 transition-colors duration-300">
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="touch-target inline-flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              aria-label={dark ? 'Light mode' : 'Dark mode'}
+            >
+              {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+          </div>
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-blue-600 rounded-xl sm:rounded-2xl mb-3 sm:mb-4 shadow-lg">
+              {mode === 'login' && <LogIn className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
+              {mode === 'register' && <UserPlus className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
+              {mode === 'forgot' && <Mail className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-blue-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
               {mode === 'login' && 'Welcome Back'}
               {mode === 'register' && 'Create Account'}
               {mode === 'forgot' && 'Reset Password'}
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 dark:text-gray-400 mt-1 sm:mt-2 text-sm sm:text-base">
               {mode === 'login' && 'Sign in to your account to continue'}
               {mode === 'register' && 'Start your journey with us today'}
               {mode === 'forgot' && 'Enter your email to reset your password'}
             </p>
           </div>
 
-          {/* Messages */}
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg animate-slide-in">
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-lg animate-slide-in">
               <div className="flex items-center">
-                <XCircle className="w-5 h-5 mr-2" />
+                <XCircle className="w-5 h-5 mr-2 shrink-0" />
                 <span>{error}</span>
               </div>
             </div>
           )}
           {success && (
-            <div className="mb-6 bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-lg animate-slide-in">
+            <div className="mb-6 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 text-green-700 dark:text-green-300 p-4 rounded-lg animate-slide-in">
               <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2" />
+                <CheckCircle className="w-5 h-5 mr-2 shrink-0" />
                 <span>{success}</span>
               </div>
             </div>
           )}
 
-          {/* Login Form */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Email Address
                   </label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className={inputClass}
                       placeholder="you@example.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Password
                   </label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className={`${inputClass} pr-12`}
                       placeholder="Enter your password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -235,7 +245,7 @@ function Auth() {
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                  className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -260,12 +270,12 @@ function Auth() {
               </button>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Don't have an account?{' '}
                   <button
                     type="button"
                     onClick={() => setMode('register')}
-                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+                    className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors"
                   >
                     Sign up
                   </button>
@@ -274,109 +284,68 @@ function Auth() {
             </form>
           )}
 
-          {/* Register Form */}
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-6 animate-fade-in">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Username
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Username</label>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Choose a username"
-                    />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
+                    <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className={inputClass} placeholder="Choose a username" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email Address
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="you@example.com"
-                    />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} placeholder="you@example.com" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className={`${inputClass} pr-12`}
                       placeholder="Create a strong password"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 transition-colors"
-                    >
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                   {password && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-600">Password Strength:</span>
-                        <span className={`text-xs font-semibold ${getPasswordStrengthColor().replace('bg-', 'text-')}`}>
-                          {getPasswordStrengthText()}
-                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">Password Strength:</span>
+                        <span className={`text-xs font-semibold ${getPasswordStrengthColor().replace('bg-', 'text-')}`}>{getPasswordStrengthText()}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                          style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                        ></div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                        <div className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`} style={{ width: `${(passwordStrength / 5) * 100}%` }} />
                       </div>
                     </div>
                   )}
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className={`${inputClass} pr-12`}
                       placeholder="Confirm your password"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 transition-colors"
-                    >
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                       {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  {confirmPassword && password !== confirmPassword && (
-                    <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
-                  )}
+                  {confirmPassword && password !== confirmPassword && <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match</p>}
                 </div>
               </div>
 
@@ -399,13 +368,9 @@ function Auth() {
               </button>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setMode('login')}
-                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
-                  >
+                  <button type="button" onClick={() => setMode('login')} className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors">
                     Sign in
                   </button>
                 </p>
@@ -413,27 +378,15 @@ function Auth() {
             </form>
           )}
 
-          {/* Forgot Password Form */}
           {mode === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-6 animate-fade-in">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-600 transition-colors" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="you@example.com"
-                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} placeholder="you@example.com" />
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  We'll send you instructions to reset your password
-                </p>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">We'll send you instructions to reset your password</p>
               </div>
 
               <button
@@ -455,11 +408,7 @@ function Auth() {
               </button>
 
               <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-semibold transition-colors flex items-center justify-center gap-1"
-                >
+                <button type="button" onClick={() => setMode('login')} className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors flex items-center justify-center gap-1">
                   <ArrowRight className="w-4 h-4 rotate-180" />
                   Back to Sign In
                 </button>

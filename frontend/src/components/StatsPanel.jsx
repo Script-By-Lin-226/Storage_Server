@@ -74,25 +74,23 @@ function StatsPanel({ stats, loading }) {
   ]
 
   const StatCard = ({ icon: Icon, title, value, subtitle, colorClass = 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400' }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-soft dark:shadow-soft-dark p-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{value}</p>
-          {subtitle && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>
-          )}
+    <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-soft dark:shadow-soft-dark p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{title}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 sm:mt-2 truncate">{value}</p>
+          {subtitle && <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <div className={`p-3 rounded-xl ${colorClass}`}>
-          <Icon className="w-6 h-6" />
+        <div className={`shrink-0 p-2.5 sm:p-3 rounded-xl ${colorClass}`}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
       </div>
     </div>
   )
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatCard
           icon={HardDrive}
           title="Total Quota"
@@ -123,9 +121,9 @@ function StatsPanel({ stats, loading }) {
         />
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-soft dark:shadow-soft-dark p-6 border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Your Storage Quota</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-soft dark:shadow-soft-dark p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">Your Storage Quota</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Progress Bar */}
           <div>
             <div className="space-y-4">
@@ -169,10 +167,11 @@ function StatsPanel({ stats, loading }) {
           {/* File Types Chart */}
           {fileTypeData.length > 0 && (
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-3 sm:mb-4">
                 File Types Distribution
               </h3>
-              <ResponsiveContainer width="100%" height={320}>
+              <div className="h-[220px] sm:h-[320px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={fileTypeData}
@@ -233,16 +232,17 @@ function StatsPanel({ stats, loading }) {
                   />
                 </PieChart>
               </ResponsiveContainer>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-soft dark:shadow-soft-dark p-6 border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-soft dark:shadow-soft-dark p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
           Detailed Statistics
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Your Storage</h3>
             <dl className="space-y-2">

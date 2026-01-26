@@ -214,54 +214,47 @@ function FileManager({ onFileChange }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Drag-and-drop + toolbar */}
+    <div className="space-y-4 sm:space-y-6">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`bg-white dark:bg-gray-800 rounded-2xl shadow-soft dark:shadow-soft-dark border border-gray-200 dark:border-gray-700 overflow-hidden transition-all ${
+        className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-soft dark:shadow-soft-dark border border-gray-200 dark:border-gray-700 overflow-hidden transition-all ${
           dragOver ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900' : ''
         }`}
       >
-        <div className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex-1 w-full sm:w-auto">
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
+            <div className="flex-1 w-full min-w-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 shrink-0" />
                 <input
                   type="text"
                   placeholder="Search files..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none text-base sm:text-sm"
                 />
               </div>
             </div>
-            <div className="flex gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={uploading}
-              />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+            <div className="grid grid-cols-2 sm:flex sm:flex-initial gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="inline-flex items-center px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition disabled:opacity-50"
+                className="touch-target inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition disabled:opacity-50 text-sm sm:text-base"
               >
-                <Upload className="w-5 h-5 mr-2" />
-                Upload File
+                <Upload className="w-5 h-5 shrink-0" />
+                <span className="truncate">Upload</span>
               </button>
               <button
                 type="button"
                 onClick={fetchFiles}
                 disabled={loading}
-                className="inline-flex items-center px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
+                className="touch-target inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50 text-sm sm:text-base"
               >
-                <RefreshCw className={`w-5 h-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 shrink-0 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
@@ -293,32 +286,41 @@ function FileManager({ onFileChange }) {
         </div>
       </div>
 
-      {/* Files table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-soft dark:shadow-soft-dark border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-soft dark:shadow-soft-dark border border-gray-200 dark:border-gray-700 overflow-hidden">
         {loading ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">File Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Size</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <FileRowSkeleton key={i} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : filteredFiles.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-              <File className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+          <>
+            <div className="md:hidden flex flex-col divide-y divide-gray-200 dark:divide-gray-700">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16" />
+                </div>
+              ))}
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">File Name</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Size</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
+                    <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <FileRowSkeleton key={i} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : filteredFiles.length === 0 ? (
+          <div className="text-center py-12 sm:py-16 px-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+              <File className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 dark:text-gray-500" />
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg font-medium">
               {searchTerm ? 'No files match your search' : 'No files yet'}
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">
@@ -326,7 +328,46 @@ function FileManager({ onFileChange }) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredFiles.map((file) => (
+                <div key={file.id} className="p-4 active:bg-gray-50 dark:active:bg-gray-700/50 transition">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      {editingId === file.id ? (
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">{file.filename}</p>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{file.size} · {formatDate(file.created_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {editingId === file.id ? (
+                        <>
+                          <button type="button" onClick={() => handleRename(file.id)} className="touch-target flex items-center justify-center p-2.5 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30" title="Save"><Check className="w-5 h-5" /></button>
+                          <button type="button" onClick={cancelEdit} className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30" title="Cancel"><X className="w-5 h-5" /></button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" onClick={() => handleDownload(file.id, file.filename)} className="touch-target flex items-center justify-center p-2.5 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30" title="Download"><Download className="w-5 h-5" /></button>
+                          <button type="button" onClick={() => startEdit(file)} className="touch-target flex items-center justify-center p-2.5 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Rename"><Edit2 className="w-5 h-5" /></button>
+                          <button type="button" onClick={() => handleDelete(file.id, file.filename)} className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30" title="Delete"><Trash2 className="w-5 h-5" /></button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
@@ -387,7 +428,8 @@ function FileManager({ onFileChange }) {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
