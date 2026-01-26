@@ -3,6 +3,10 @@ import axios from 'axios'
 
 const AuthContext = createContext()
 
+// Use explicit API URL when set (e.g. other PC's backend via ngrok); otherwise use /api for dev proxy
+const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api'
+const isNgrok = apiBase.includes('ngrok')
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
@@ -18,8 +22,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
 
   // Configure axios defaults
-  axios.defaults.baseURL = '/api'
+  axios.defaults.baseURL = apiBase
   axios.defaults.headers.common['Content-Type'] = 'application/json'
+  // Ngrok free tier shows "Visit Site" HTML for browser requests; this header skips it so API returns JSON
+  if (isNgrok) {
+    axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true'
+  }
 
   const fetchUserInfo = async () => {
     try {
