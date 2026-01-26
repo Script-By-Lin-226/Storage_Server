@@ -1,16 +1,25 @@
-import aiofiles, os, shutil
-from fastapi import File, UploadFile, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+import aiofiles
+import os
+import shutil
+from datetime import datetime
 from pathlib import Path
-from sqlalchemy.future import select
+from typing import List, Optional
+
+from fastapi import File, HTTPException, Request, UploadFile
 from sqlalchemy import func
-from app.models.Database_Model import FileTable, UserQuotas
-from app.core.config import settings
-from app.services.quota_service import DEFAULT_QUOTA_BYTES
+from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.responses import JSONResponse, StreamingResponse
-from typing import List, Optional
-from datetime import datetime
+
+from app.core.config import settings
+from app.models.Database_Model import FileTable, UserQuotas
+from app.security.file_encryption import (
+    decrypt_bytes,
+    encrypt_bytes,
+    is_encryption_available,
+)
+from app.services.quota_service import DEFAULT_QUOTA_BYTES
 
 # Cross-platform storage directory - configurable via environment variable
 # Supports Linux LVM paths (e.g., /mnt/lvm-storage/uploads or /var/storage/uploads)
@@ -125,14 +134,21 @@ async def upload_file(request: Request, session: AsyncSession, file: UploadFile 
                     )
                 quota_checked = True
         
-        # Write file to disk
-        async with aiofiles.open(file_path, "wb") as out_file:
-            for chunk in temp_chunks:
-                await out_file.write(chunk)
-        
-        # Update quota after successful upload
+        # Write file to disk (optionally encrypted at rest)
+        plain = b"".join(temp_chunks)
+        use_encryption = settings.encryption_key and is_encryption_available(settings.encryption_key)
+        if use_encryption:
+            encrypted = encrypt_bytes(settings.encryption_key, plain)
+            async with aiofiles.open(file_path, "wb") as out_file:
+                await out_file.write(encrypted)
+        else:
+            async with aiofiles.open(file_path, "wb") as out_file:
+                for chunk in temp_chunks:
+                    await out_file.write(chunk)
+
+        # Update quota after successful upload (always by plain size)
         await update_quota(user.id, file_size, session, "add")
-        
+
     except HTTPException:
         # Clean up partial file on quota error
         if file_path.exists():
@@ -144,11 +160,12 @@ async def upload_file(request: Request, session: AsyncSession, file: UploadFile 
             file_path.unlink()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save file: {str(e)}")
 
-    # Store in DB
+    # Store in DB (plain_size_bytes for quota/display when encryption is used)
     new_file = FileTable(
         owner_id=user.id,
         filename=file.filename,
         file_path=str(file_path),
+        plain_size_bytes=file_size if (settings.encryption_key and is_encryption_available(settings.encryption_key)) else None,
     )
     session.add(new_file)
     await session.commit()
@@ -189,22 +206,52 @@ async def download_file(id: int, session: AsyncSession, request: Optional[Reques
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
 
-    # Optimized async streaming response with larger chunks
+    use_encryption = settings.encryption_key and is_encryption_available(settings.encryption_key)
+    if use_encryption:
+        # Read full file, decrypt, stream decrypted bytes
+        async with aiofiles.open(file_path, "rb") as f:
+            data = await f.read()
+        try:
+            plain = decrypt_bytes(settings.encryption_key, data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Decrypt failed for file id=%s: %s", id, e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="File could not be decrypted. Key may have changed or data is corrupted.",
+            ) from e
+        content_length = len(plain)
+
+        async def decrypted_iterator():
+            offset = 0
+            while offset < content_length:
+                chunk = plain[offset : offset + DOWNLOAD_CHUNK_SIZE]
+                offset += len(chunk)
+                yield chunk
+
+        return StreamingResponse(
+            decrypted_iterator(),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={file.filename}",
+                "Content-Length": str(content_length),
+            },
+        )
+
+    # Unencrypted: stream directly from disk
     async def file_iterator(path):
         async with aiofiles.open(path, "rb") as f:
             while chunk := await f.read(DOWNLOAD_CHUNK_SIZE):
                 yield chunk
 
-    # Get file size for Content-Length header
     file_size = file_path.stat().st_size
-    
     return StreamingResponse(
         file_iterator(file_path),
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": f"attachment; filename={file.filename}",
-            "Content-Length": str(file_size)
-        }
+            "Content-Length": str(file_size),
+        },
     )
 
 async def view_file_size(id: int, session: AsyncSession, request: Optional[Request] = None):
@@ -225,8 +272,7 @@ async def view_file_size(id: int, session: AsyncSession, request: Optional[Reque
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
 
-    stat = os.stat(file_path)
-    size_bytes = stat.st_size
+    size_bytes = file.plain_size_bytes if file.plain_size_bytes is not None else os.stat(file_path).st_size
 
     # Format file size
     def format_size(size: int) -> dict:
@@ -275,9 +321,8 @@ async def list_files(session: AsyncSession, request: Request, skip: int = 0, lim
     for file in files:
         file_path = Path(file.file_path)
         if file_path.exists():
-            stat = os.stat(file_path)
-            size_bytes = stat.st_size
-            
+            size_bytes = file.plain_size_bytes if file.plain_size_bytes is not None else os.stat(file_path).st_size
+
             def format_size(size: int) -> str:
                 size_mb = round(size / 1024 ** 2, 2)
                 size_gb = round(size / 1024 ** 3, 2)
@@ -328,15 +373,15 @@ async def delete_file(id: int, session: AsyncSession, request: Request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     file_path = Path(file.file_path)
-    
-    # Get file size before deletion for quota update
+
+    # Use stored plain size for quota when available (encrypted files); else use disk size
     file_size = 0
     if file_path.exists():
         try:
-            file_size = file_path.stat().st_size
+            file_size = file.plain_size_bytes if file.plain_size_bytes is not None else file_path.stat().st_size
             file_path.unlink()
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete file: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete file: {str(e)}") from e
 
     # Update quota (subtract file size)
     if file_size > 0:
@@ -445,8 +490,11 @@ async def get_directory_stats(request: Request, session: AsyncSession):
     for file in files:
         file_path = Path(file.file_path)
         if file_path.exists():
-            stat = os.stat(file_path)
-            total_size += stat.st_size
+            total_size += (
+                file.plain_size_bytes
+                if file.plain_size_bytes is not None
+                else os.stat(file_path).st_size
+            )
             file_count += 1
             
             # Count by file type

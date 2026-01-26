@@ -23,6 +23,8 @@ class FileTable(Base):
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     filename = Column(String, index=True, nullable=False)
     file_path = Column(String, nullable=False)
+    # When encryption is used, original file size (for quota and display). None = use disk size.
+    plain_size_bytes = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

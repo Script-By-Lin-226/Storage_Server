@@ -1,9 +1,11 @@
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
 load_dotenv()
+
 
 class Settings(BaseSettings):
     secret_key: str = os.getenv("SECRET_KEY")
@@ -16,5 +18,10 @@ class Settings(BaseSettings):
     redis_port: int = os.getenv("REDIS_PORT")
     # Storage configuration - supports Linux LVM paths
     upload_dir: str = os.getenv("UPLOAD_DIR", "/var/storage/uploads")  # Default Linux path
+    # Optional: base64url-encoded 32-byte key for file encryption at rest (Fernet).
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # If unset, files are stored without encryption.
+    encryption_key: Optional[str] = os.getenv("ENCRYPTION_KEY") or None
+
 
 settings = Settings()

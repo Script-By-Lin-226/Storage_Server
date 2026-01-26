@@ -10,6 +10,7 @@ A modern file storage server with a React dashboard for managing files and viewi
 - ⚡ **Optimized Performance**: Enhanced upload/download speed with optimized chunking (8MB upload, 10MB download chunks)
 - 📊 **Storage Statistics**: Directory usage, free space percentage, and file type distribution
 - 🔒 **Security**: User-based file access control
+- 🔐 **File encryption at rest**: Optional Fernet (AES) encryption for uploaded files via `ENCRYPTION_KEY`
 - 🗄️ **Database**: PostgreSQL with SQLAlchemy async support
 - ⚙️ **Redis**: Caching support
 - 🐧 **Linux/LVM Compatible**: Configurable storage paths for Linux LVM integration
@@ -18,7 +19,11 @@ A modern file storage server with a React dashboard for managing files and viewi
 - 🔐 **Automatic ACL Setup**: User-specific directories with proper permissions created automatically
 
 ### Frontend
-- 🎨 **Modern UI**: Clean and professional React dashboard with Tailwind CSS
+- 🎨 **Modern UI**: Clean and professional React dashboard with Tailwind CSS and Plus Jakarta Sans
+- 🌙 **Dark mode**: Toggle with persistence and system preference detection
+- 📬 **Toasts**: Success and error notifications for actions
+- 📤 **Drag-and-drop upload**: Drop files onto the file area to upload
+- 📋 **Sortable file list**: Sort by name, size, or date (asc/desc)
 - 📈 **Real-time Stats**: Visual charts showing disk usage and file distribution
 - 🔍 **File Search**: Quick search functionality
 - 📤 **Upload Progress**: Real-time upload progress indicator
@@ -72,6 +77,9 @@ ALGORITHM=HS256
 REDIS_URL=redis://localhost:6379
 REDIS_HOST=localhost
 REDIS_PORT=6379
+# Optional: encrypt file contents at rest (Fernet). Generate key with:
+# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# ENCRYPTION_KEY=your-base64url-32-byte-key
 ```
 
 3. Run database migrations:
