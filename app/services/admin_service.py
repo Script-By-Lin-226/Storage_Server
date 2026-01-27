@@ -7,8 +7,9 @@ from starlette.responses import JSONResponse
 from fastapi import HTTPException
 from pathlib import Path
 import shutil
+from datetime import datetime, timedelta, timezone
 
-from app.models.Database_Model import UserTable, UserQuotas, FileTable
+from app.models.Database_Model import UserTable, UserQuotas, FileTable, PremiumPurchase
 from app.security.password_security import get_password_hash
 from app.services.quota_service import DEFAULT_QUOTA_BYTES, setup_user_storage
 from app.services.file_service import UPLOAD_DIR
@@ -322,6 +323,15 @@ async def get_admin_stats(session: AsyncSession):
         else:
             return {"value": round(bytes_val / 1024, 2), "unit": "KB", "formatted": f"{round(bytes_val / 1024, 2)} KB"}
     
+    # Premium purchases summary
+    pending_purchases_q = select(func.count(PremiumPurchase.id)).where(PremiumPurchase.status == "pending")
+    pending_purchases_res = await session.execute(pending_purchases_q)
+    pending_purchases = pending_purchases_res.scalar() or 0
+
+    total_purchases_q = select(func.count(PremiumPurchase.id))
+    total_purchases_res = await session.execute(total_purchases_q)
+    total_purchases = total_purchases_res.scalar() or 0
+
     return {
         "users": {
             "total": total_users,
@@ -344,5 +354,106 @@ async def get_admin_stats(session: AsyncSession):
             "used_bytes": used_disk,
             "free": format_bytes(free_disk),
             "free_bytes": free_disk,
-        }
+        },
+        "premium": {
+            "total_purchases": total_purchases,
+            "pending_purchases": pending_purchases,
+        },
+    }
+
+
+async def list_premium_purchases(session: AsyncSession, status_filter: str | None = None):
+    """
+    List premium purchases for admin review.
+    Optionally filter by status ("pending", "approved", "rejected").
+
+    NOTE: We avoid lazy-loading relationships in async context by joining UserTable
+    explicitly and selecting both models.
+    """
+    query = (
+        select(PremiumPurchase, UserTable)
+        .join(UserTable, PremiumPurchase.user_id == UserTable.id)
+        .order_by(PremiumPurchase.created_at.desc())
+    )
+    if status_filter:
+        query = query.where(PremiumPurchase.status == status_filter)
+
+    result = await session.execute(query)
+    rows = result.all()
+
+    now = datetime.now(timezone.utc)
+    data = []
+    for purchase, user in rows:
+        data.append(
+            {
+                "id": purchase.id,
+                "user_id": purchase.user_id,
+                "username": user.username if user else None,
+                "email": user.email if user else None,
+                "plan_name": purchase.plan_name,
+                "storage_gb": purchase.storage_gb,
+                "price_ks": purchase.price_ks,
+                "phone_msisdn": purchase.phone_msisdn,
+                "payment_method": purchase.payment_method,
+                "status": purchase.status,
+                "expires_at": purchase.expires_at.isoformat() if purchase.expires_at else None,
+                "is_active": purchase.status == "approved"
+                and purchase.expires_at is not None
+                and purchase.expires_at > now,
+                "transcript_uploaded": bool(purchase.transcript_path),
+                "created_at": purchase.created_at.isoformat() if purchase.created_at else None,
+            }
+        )
+
+    return {"purchases": data}
+
+
+async def update_premium_status(purchase_id: int, new_status: str, session: AsyncSession):
+    """
+    Approve or reject a premium purchase.
+    """
+    if new_status not in {"pending", "approved", "rejected"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
+
+    query = select(PremiumPurchase).where(PremiumPurchase.id == purchase_id)
+    res = await session.execute(query)
+    purchase = res.scalar_one_or_none()
+
+    if not purchase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Premium purchase not found")
+
+    old_status = purchase.status
+    purchase.status = new_status
+
+    # If this is an approval and was not already approved, set expiry and upgrade quota now
+    if new_status == "approved" and old_status != "approved" and purchase.price_ks > 0:
+        # Extend expiry to at least 30 days from now (stacking renewals)
+        new_expiry = datetime.now(timezone.utc) + timedelta(days=30)
+        if purchase.expires_at is None or purchase.expires_at < new_expiry:
+            purchase.expires_at = new_expiry
+
+        # Increment user's quota by this package size instead of overwriting
+        quota_q = select(UserQuotas).where(UserQuotas.user_id == purchase.user_id)
+        res = await session.execute(quota_q)
+        quota = res.scalars().first()
+        increment_bytes = purchase.storage_gb * 1024 * 1024 * 1024
+        if quota:
+            current_max = quota.max_storage_size or 0
+            quota.max_storage_size = current_max + increment_bytes
+        else:
+            quota = UserQuotas(
+                user_id=purchase.user_id,
+                max_storage_size=increment_bytes,
+                used_storage_size=0,
+            )
+            session.add(quota)
+
+    await session.commit()
+    await session.refresh(purchase)
+
+    return {
+        "message": "Premium status updated",
+        "id": purchase.id,
+        "old_status": old_status,
+        "new_status": purchase.status,
     }

@@ -40,6 +40,13 @@ function StatsPanel({ stats, loading }) {
 
   const { user_storage, quota, file_types } = stats
 
+  const formatPercent = (value) => {
+    if (value == null || Number.isNaN(value)) return '0.0'
+    const num = Number(value)
+    if (num > 0 && num < 0.1) return '<0.1'
+    return num.toFixed(1)
+  }
+
   // Prepare data for pie chart (top 8 file types to avoid clutter)
   const fileTypeEntries = Object.entries(file_types || {})
     .sort(([, a], [, b]) => b - a)
@@ -102,7 +109,7 @@ function StatsPanel({ stats, loading }) {
           icon={TrendingUp}
           title="Free Space"
           value={quota?.free?.formatted || '0 B'}
-          subtitle={`${quota?.free_percentage?.toFixed(1) || 0}% available`}
+          subtitle={`${formatPercent(quota?.free_percentage)}% available`}
           colorClass="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400"
         />
         <StatCard
@@ -116,7 +123,7 @@ function StatsPanel({ stats, loading }) {
           icon={FileText}
           title="Used Space"
           value={quota?.used?.formatted || '0 B'}
-          subtitle={`${quota?.used_percentage?.toFixed(1) || 0}% of quota`}
+          subtitle={`${formatPercent(quota?.used_percentage)}% of quota`}
           colorClass="bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400"
         />
       </div>
@@ -141,7 +148,7 @@ function StatsPanel({ stats, loading }) {
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {quota?.used_percentage?.toFixed(1) || 0}% of your quota used
+                  {formatPercent(quota?.used_percentage)}% of your quota used
                 </p>
               </div>
               <div>
@@ -158,7 +165,7 @@ function StatsPanel({ stats, loading }) {
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {quota?.free_percentage?.toFixed(1) || 0}% of your quota available
+                  {formatPercent(quota?.free_percentage)}% of your quota available
                 </p>
               </div>
             </div>
@@ -266,13 +273,13 @@ function StatsPanel({ stats, loading }) {
               <div className="flex justify-between">
                 <dt className="text-gray-600 dark:text-gray-400">Used:</dt>
                 <dd className="font-medium text-gray-900 dark:text-white">
-                  {quota?.used?.formatted || '0 B'} ({quota?.used_percentage?.toFixed(1) || 0}%)
+                  {quota?.used?.formatted || '0 B'} ({formatPercent(quota?.used_percentage)}%)
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600 dark:text-gray-400">Free:</dt>
                 <dd className="font-medium text-gray-900 dark:text-white">
-                  {quota?.free?.formatted || '0 B'} ({quota?.free_percentage?.toFixed(1) || 0}%)
+                  {quota?.free?.formatted || '0 B'} ({formatPercent(quota?.free_percentage)}%)
                 </dd>
               </div>
             </dl>

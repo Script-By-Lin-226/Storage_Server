@@ -12,8 +12,15 @@ _EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/openapi.json" , "/docs" , 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
 
         if request.url.path in _EXCLUDE_PATH:
+            return await call_next(request)
+
+        # If a previous middleware (e.g. TokenRotationMiddleware) has already
+        # attached the authenticated user, trust it and continue.
+        if getattr(request.state, "user", None):
             return await call_next(request)
 
         # Check for token in Authorization header first, then cookies

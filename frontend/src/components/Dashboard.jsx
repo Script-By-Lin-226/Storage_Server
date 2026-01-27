@@ -6,10 +6,12 @@ import StatsPanel from './StatsPanel'
 import AdminPanel from './AdminPanel'
 import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown } from 'lucide-react'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 
 function Dashboard() {
   const { logout, user } = useAuth()
   const { dark, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('files')
@@ -51,10 +53,15 @@ function Dashboard() {
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {!isAdmin && (
-                <a href="#premium" onClick={(e) => e.preventDefault()} className="touch-target inline-flex items-center justify-center gap-1 px-2 sm:px-2.5 rounded-lg text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" title="Buy Premium">
+                <button
+                  type="button"
+                  onClick={() => navigate('/premium')}
+                  className="touch-target inline-flex items-center justify-center gap-1 px-2 sm:px-2.5 rounded-lg text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  title="Buy Premium"
+                >
                   <Crown className="w-4 h-4" />
                   <span className="hidden sm:inline">Premium</span>
-                </a>
+                </button>
               )}
               <span className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm truncate max-w-[120px] lg:max-w-[180px]">
                 <User className="w-4 h-4 shrink-0" />

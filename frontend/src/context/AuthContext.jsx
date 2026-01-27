@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
   // Configure axios defaults
   axios.defaults.baseURL = apiBase
   axios.defaults.headers.common['Content-Type'] = 'application/json'
+  axios.defaults.withCredentials = true
   // Ngrok free tier shows "Visit Site" HTML for browser requests; this header skips it so API returns JSON
   if (isNgrok) {
     axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true'
@@ -47,6 +48,31 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // Install a response interceptor to handle token rotation
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => {
+        const newAccessToken = response.headers?.['x-new-access-token'] || response.headers?.['X-New-Access-Token']
+        if (newAccessToken) {
+          localStorage.setItem('token', newAccessToken)
+          setToken(newAccessToken)
+          axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
+          setIsAuthenticated(true)
+        }
+        return response
+      },
+      (error) => {
+        // If the backend says unauthorized, clear local state
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token')
+          setToken(null)
+          delete axios.defaults.headers.common['Authorization']
+          setIsAuthenticated(false)
+          setUser(null)
+        }
+        return Promise.reject(error)
+      }
+    )
+
     // Check for stored token
     const storedToken = localStorage.getItem('token')
     if (storedToken) {
@@ -57,6 +83,11 @@ export function AuthProvider({ children }) {
       fetchUserInfo().finally(() => setLoading(false))
     } else {
       setLoading(false)
+    }
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

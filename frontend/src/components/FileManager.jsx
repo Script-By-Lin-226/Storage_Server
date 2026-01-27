@@ -14,6 +14,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Folder as FolderIcon,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 
 function FileRowSkeleton() {
@@ -41,9 +44,13 @@ function FileManager({ onFileChange }) {
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = React.useRef(null)
+  const folderInputRef = React.useRef(null)
+  const [planTier, setPlanTier] = useState('basic') // 'basic' | 'premium' | 'premium_plus'
+  const [expandedFolders, setExpandedFolders] = useState({})
 
   useEffect(() => {
     fetchFiles()
+    fetchPlanTier()
   }, [])
 
   const fetchFiles = async () => {
@@ -61,11 +68,21 @@ function FileManager({ onFileChange }) {
     }
   }
 
+  const fetchPlanTier = async () => {
+    try {
+      const res = await axios.get('/files/stats')
+      const totalBytes = res.data?.quota?.total_bytes || 0
+      const totalGb = totalBytes / (1024 ** 3)
+      if (totalGb >= 500) setPlanTier('premium_plus')
+      else if (totalGb >= 100) setPlanTier('premium')
+      else setPlanTier('basic')
+    } catch (err) {
+      console.error('Failed to fetch plan tier', err)
+    }
+  }
+
   const doUpload = async (file) => {
     if (!file) return
-    setUploading(true)
-    setUploadProgress(0)
-    setError('')
     const formData = new FormData()
     formData.append('file', file)
     try {
@@ -76,30 +93,115 @@ function FileManager({ onFileChange }) {
           setUploadProgress(pct)
         },
       })
-      toast.success('File uploaded successfully!')
       await fetchFiles()
       if (onFileChange) onFileChange()
+      return true
     } catch (err) {
       const msg = err.response?.data?.detail || 'Upload failed'
       setError(msg)
-      toast.error(msg)
+      throw new Error(msg)
+    }
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadProgress(0)
+    setError('')
+    try {
+      await doUpload(file)
+      toast.success('File uploaded successfully!')
+    } catch (err) {
+      toast.error(err.message || 'Upload failed')
     } finally {
       setUploading(false)
       setUploadProgress(0)
     }
-  }
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    doUpload(file)
     e.target.value = ''
   }
 
-  const handleDrop = (e) => {
+  const handleFolderUpload = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    
+    setUploading(true)
+    setUploadProgress(0)
+    setError('')
+    
+    let uploaded = 0
+    let failed = 0
+    
+    for (const file of files) {
+      if (file && !file.type?.startsWith('text/html')) {
+        try {
+          await doUpload(file)
+          uploaded++
+        } catch (err) {
+          failed++
+          console.error(`Failed to upload ${file.name}:`, err)
+        }
+        // Update progress
+        setUploadProgress(Math.round(((uploaded + failed) / files.length) * 100))
+      }
+    }
+    
+    if (uploaded > 0) {
+      toast.success(`Successfully uploaded ${uploaded} file${uploaded > 1 ? 's' : ''}`)
+    }
+    if (failed > 0) {
+      toast.error(`Failed to upload ${failed} file${failed > 1 ? 's' : ''}`)
+    }
+    
+    await fetchFiles()
+    if (onFileChange) onFileChange()
+    
+    setUploading(false)
+    setUploadProgress(0)
+    e.target.value = ''
+  }
+
+  const handleDrop = async (e) => {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer?.files?.[0]
-    if (file && !file.type?.startsWith('text/html')) doUpload(file)
+    const files = Array.from(e.dataTransfer?.files || [])
+    const first = files[0]
+    if (!first) return
+    
+    setUploading(true)
+    setUploadProgress(0)
+    setError('')
+    
+    try {
+      // For premium tiers allow multiple drag-drop uploads
+      if (planTier !== 'basic') {
+        let uploaded = 0
+        let failed = 0
+        for (const file of files) {
+          if (file && !file.type?.startsWith('text/html')) {
+            try {
+              await doUpload(file)
+              uploaded++
+            } catch (err) {
+              failed++
+            }
+            setUploadProgress(Math.round(((uploaded + failed) / files.length) * 100))
+          }
+        }
+        if (uploaded > 0) toast.success(`Successfully uploaded ${uploaded} file${uploaded > 1 ? 's' : ''}`)
+        if (failed > 0) toast.error(`Failed to upload ${failed} file${failed > 1 ? 's' : ''}`)
+      } else if (first && !first.type?.startsWith('text/html')) {
+        await doUpload(first)
+        toast.success('File uploaded successfully!')
+      }
+      await fetchFiles()
+      if (onFileChange) onFileChange()
+    } catch (err) {
+      toast.error(err.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   const handleDragOver = (e) => {
@@ -120,6 +222,9 @@ function FileManager({ onFileChange }) {
       link.remove()
       window.URL.revokeObjectURL(url)
       toast.success('Download started')
+      // Refresh so download_count updates
+      await fetchFiles()
+      if (onFileChange) onFileChange()
     } catch (err) {
       setError('Failed to download file')
       toast.error('Failed to download file')
@@ -182,12 +287,12 @@ function FileManager({ onFileChange }) {
 
   const filteredFiles = useMemo(() => {
     let list = files.filter((f) =>
-      f.filename.toLowerCase().includes(searchTerm.toLowerCase())
+      (f.filename || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
     const mult = sortDir === 'asc' ? 1 : -1
     list = [...list].sort((a, b) => {
       if (sortBy === 'name') {
-        return mult * (a.filename.localeCompare(b.filename, undefined, { sensitivity: 'base' }))
+        return mult * ((a.filename || '').localeCompare(b.filename || '', undefined, { sensitivity: 'base' }))
       }
       if (sortBy === 'date') {
         return mult * (new Date(a.created_at || 0) - new Date(b.created_at || 0))
@@ -196,6 +301,46 @@ function FileManager({ onFileChange }) {
     })
     return list
   }, [files, searchTerm, sortBy, sortDir])
+
+  // Group files by top-level folder (based on filename path like "FOLDER/sub/file.ext")
+  const structuredItems = useMemo(() => {
+    const folders = {}
+    const rootFiles = []
+
+    for (const file of filteredFiles) {
+      const name = file.filename || ''
+      const parts = name.split('/')
+
+      if (parts.length > 1) {
+        const folderName = parts[0]
+        const relativePath = parts.slice(1).join('/')
+
+        if (!folders[folderName]) {
+          folders[folderName] = {
+            type: 'folder',
+            name: folderName,
+            files: [],
+          }
+        }
+
+        folders[folderName].files.push({
+          ...file,
+          displayName: relativePath || file.filename,
+        })
+      } else {
+        rootFiles.push({
+          ...file,
+          displayName: file.filename,
+        })
+      }
+    }
+
+    const folderItems = Object.values(folders).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    )
+
+    return [...folderItems, ...rootFiles]
+  }, [filteredFiles])
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -237,7 +382,20 @@ function FileManager({ onFileChange }) {
                 />
               </div>
             </div>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+            <>
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+              {planTier !== 'basic' && (
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  className="hidden"
+                  webkitdirectory="true"
+                  multiple
+                  onChange={handleFolderUpload}
+                  disabled={uploading}
+                />
+              )}
+            </>
             <div className="grid grid-cols-2 sm:flex sm:flex-initial gap-2 sm:gap-3">
               <button
                 type="button"
@@ -248,6 +406,17 @@ function FileManager({ onFileChange }) {
                 <Upload className="w-5 h-5 shrink-0" />
                 <span className="truncate">Upload</span>
               </button>
+              {planTier !== 'basic' && (
+                <button
+                  type="button"
+                  onClick={() => folderInputRef.current?.click()}
+                  disabled={uploading}
+                  className="touch-target inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 text-xs sm:text-sm"
+                >
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Upload folder</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={fetchFiles}
@@ -260,27 +429,43 @@ function FileManager({ onFileChange }) {
             </div>
           </div>
           {uploading && (
-            <div className="mt-4">
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span>Uploading...</span>
-                <span className="font-medium text-primary-600 dark:text-primary-400">{uploadProgress}%</span>
+            <div className="mt-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-primary-600 dark:text-primary-400 animate-spin" />
+                  <span className="text-sm font-medium text-primary-700 dark:text-primary-300">Uploading...</span>
+                </div>
+                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+              <div className="w-full bg-primary-100 dark:bg-primary-900/40 rounded-full h-2.5 overflow-hidden">
                 <div
-                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-primary-600 dark:bg-primary-500 h-2.5 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </div>
           )}
           {dragOver && (
-            <div className="mt-4 py-6 border-2 border-dashed border-primary-400 dark:border-primary-500 rounded-xl bg-primary-50/50 dark:bg-primary-900/20 text-center text-primary-700 dark:text-primary-300 font-medium">
-              Drop file here to upload
+            <div className="mt-4 py-8 border-2 border-dashed border-primary-500 dark:border-primary-400 rounded-xl bg-primary-50 dark:bg-primary-900/30 text-center">
+              <Upload className="w-12 h-12 mx-auto mb-3 text-primary-600 dark:text-primary-400 animate-bounce" />
+              <p className="text-primary-700 dark:text-primary-300 font-semibold text-lg">Drop file here to upload</p>
+              <p className="text-primary-600 dark:text-primary-400 text-sm mt-1">Release to start uploading</p>
             </div>
           )}
           {error && (
-            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl">
-              {error}
+            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl flex items-start gap-3">
+              <X className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium">Upload Error</p>
+                <p className="text-sm mt-1">{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
         </div>
@@ -329,44 +514,196 @@ function FileManager({ onFileChange }) {
           </div>
         ) : (
           <>
-            {/* Mobile: card list */}
+            {/* Mobile: grouped card list (folders + files) */}
             <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredFiles.map((file) => (
-                <div key={file.id} className="p-4 active:bg-gray-50 dark:active:bg-gray-700/50 transition">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      {editingId === file.id ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500 text-base"
-                          autoFocus
-                        />
-                      ) : (
-                        <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">{file.filename}</p>
+              {structuredItems.map((item, index) => {
+                if (item.type === 'folder') {
+                  const isExpanded = !!expandedFolders[item.name]
+                  return (
+                    <div key={`folder-${item.name}-${index}`} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedFolders((prev) => ({
+                            ...prev,
+                            [item.name]: !prev[item.name],
+                          }))
+                        }
+                        className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 dark:active:bg-gray-700/50 transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FolderIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {item.files.length} item{item.files.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <div className="bg-gray-50/80 dark:bg-gray-800/60">
+                          {item.files.map((file) => (
+                            <div key={file.id} className="px-4 py-3 pl-8 flex items-start justify-between gap-3 border-t border-gray-100 dark:border-gray-700/80">
+                              <div className="min-w-0 flex-1">
+                                {editingId === file.id ? (
+                                  <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                                    {file.displayName || file.filename}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {file.size} · {formatDate(file.created_at)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {editingId === file.id ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRename(file.id)}
+                                      className="touch-target flex items-center justify-center p-2.5 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                                      title="Save"
+                                    >
+                                      <Check className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelEdit}
+                                      className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-5 h-5" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownload(file.id, file.filename)}
+                                      className="touch-target flex items-center justify-center p-2.5 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                                      title="Download"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(file)}
+                                      className="touch-target flex items-center justify-center p-2.5 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                      title="Rename"
+                                    >
+                                      <Edit2 className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(file.id, file.filename)}
+                                      className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-5 h-5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{file.size} · {formatDate(file.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {editingId === file.id ? (
-                        <>
-                          <button type="button" onClick={() => handleRename(file.id)} className="touch-target flex items-center justify-center p-2.5 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30" title="Save"><Check className="w-5 h-5" /></button>
-                          <button type="button" onClick={cancelEdit} className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30" title="Cancel"><X className="w-5 h-5" /></button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => handleDownload(file.id, file.filename)} className="touch-target flex items-center justify-center p-2.5 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30" title="Download"><Download className="w-5 h-5" /></button>
-                          <button type="button" onClick={() => startEdit(file)} className="touch-target flex items-center justify-center p-2.5 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Rename"><Edit2 className="w-5 h-5" /></button>
-                          <button type="button" onClick={() => handleDelete(file.id, file.filename)} className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30" title="Delete"><Trash2 className="w-5 h-5" /></button>
-                        </>
-                      )}
+                  )
+                }
+
+                const file = item
+                return (
+                  <div key={file.id || `file-${index}`} className="p-4 active:bg-gray-50 dark:active:bg-gray-700/50 transition">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {editingId === file.id ? (
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            autoFocus
+                          />
+                        ) : (
+                          <p className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                            {file.displayName || file.filename}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {file.size} · {formatDate(file.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {editingId === file.id ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRename(file.id)}
+                              className="touch-target flex items-center justify-center p-2.5 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                              title="Save"
+                            >
+                              <Check className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+                              title="Cancel"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(file.id, file.filename)}
+                              className="touch-target flex items-center justify-center p-2.5 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                              title="Download"
+                            >
+                              <Download className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(file)}
+                              className="touch-target flex items-center justify-center p-2.5 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                              title="Rename"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(file.id, file.filename)}
+                              className="touch-target flex items-center justify-center p-2.5 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
-            {/* Desktop: table */}
+            {/* Desktop: table (grouped by folder) */}
             <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -390,42 +727,243 @@ function FileManager({ onFileChange }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredFiles.map((file) => (
-                  <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                    <td className="px-6 py-4">
-                      {editingId === file.id ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500"
-                          autoFocus
-                        />
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <File className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" />
-                          <span className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px] sm:max-w-none">{file.filename}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{file.size}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatDate(file.created_at)}</td>
-                    <td className="px-6 py-4 text-right">
-                      {editingId === file.id ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <button type="button" onClick={() => handleRename(file.id)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 p-1.5 rounded-lg" title="Save"><Check className="w-5 h-5" /></button>
-                          <button type="button" onClick={cancelEdit} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg" title="Cancel"><X className="w-5 h-5" /></button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1">
-                          <button type="button" onClick={() => handleDownload(file.id, file.filename)} className="text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 p-2 rounded-lg" title="Download"><Download className="w-5 h-5" /></button>
-                          <button type="button" onClick={() => startEdit(file)} className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-lg" title="Rename"><Edit2 className="w-5 h-5" /></button>
-                          <button type="button" onClick={() => handleDelete(file.id, file.filename)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-2 rounded-lg" title="Delete"><Trash2 className="w-5 h-5" /></button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {structuredItems.map((item, index) => {
+                  if (item.type === 'folder') {
+                    const isExpanded = !!expandedFolders[item.name]
+                    return (
+                      <React.Fragment key={`folder-row-${item.name}-${index}`}>
+                        <tr className="bg-gray-50/80 dark:bg-gray-800/70">
+                          <td className="px-6 py-3" colSpan={4}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedFolders((prev) => ({
+                                  ...prev,
+                                  [item.name]: !prev[item.name],
+                                }))
+                              }
+                              className="w-full flex items-center justify-between text-left"
+                            >
+                              <div className="flex items-center gap-3">
+                                <FolderIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                                <div>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">{item.name}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {item.files.length} item{item.files.length > 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded &&
+                          item.files.map((file) => (
+                            <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                              <td className="px-6 py-4">
+                                {editingId === file.id ? (
+                                  <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <File className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" />
+                                    <div className="flex flex-col max-w-[220px] sm:max-w-none">
+                                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                        {file.displayName || file.filename}
+                                      </span>
+                                      {planTier === 'premium_plus' && (
+                                        <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                          Downloads: {file.download_count ?? 0}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{file.size}</td>
+                              <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {formatDate(file.created_at)}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {editingId === file.id ? (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRename(file.id)}
+                                      className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 p-1.5 rounded-lg"
+                                      title="Save"
+                                    >
+                                      <Check className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelEdit}
+                                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                    {planTier !== 'basic' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const shareUrl = `${window.location.origin.replace(/\/$/, '')}/api/files/${file.id}/download`
+                                          navigator.clipboard
+                                            .writeText(shareUrl)
+                                            .then(() => toast.success('Share link copied to clipboard'))
+                                            .catch(() => toast.error('Failed to copy share link'))
+                                        }}
+                                        className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg text-xs"
+                                        title="Copy share link"
+                                      >
+                                        Link
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownload(file.id, file.filename)}
+                                      className="text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 p-2 rounded-lg"
+                                      title="Download"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(file)}
+                                      className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-lg"
+                                      title="Rename"
+                                    >
+                                      <Edit2 className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(file.id, file.filename)}
+                                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-2 rounded-lg"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </React.Fragment>
+                    )
+                  }
+
+                  const file = item
+                  return (
+                    <tr key={file.id || `file-row-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                      <td className="px-6 py-4">
+                        {editingId === file.id ? (
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500"
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <File className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" />
+                            <div className="flex flex-col max-w-[220px] sm:max-w-none">
+                              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                {file.displayName || file.filename}
+                              </span>
+                              {planTier === 'premium_plus' && (
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  Downloads: {file.download_count ?? 0}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{file.size}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        {formatDate(file.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {editingId === file.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleRename(file.id)}
+                              className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 p-1.5 rounded-lg"
+                              title="Save"
+                            >
+                              <Check className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg"
+                              title="Cancel"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            {planTier !== 'basic' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const shareUrl = `${window.location.origin.replace(/\/$/, '')}/api/files/${file.id}/download`
+                                  navigator.clipboard
+                                    .writeText(shareUrl)
+                                    .then(() => toast.success('Share link copied to clipboard'))
+                                    .catch(() => toast.error('Failed to copy share link'))
+                                }}
+                                className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg text-xs"
+                                title="Copy share link"
+                              >
+                                Link
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(file.id, file.filename)}
+                              className="text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 p-2 rounded-lg"
+                              title="Download"
+                            >
+                              <Download className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(file)}
+                              className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-lg"
+                              title="Rename"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(file.id, file.filename)}
+                              className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-2 rounded-lg"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
             </div>

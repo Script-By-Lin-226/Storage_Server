@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from starlette import status
 from starlette.requests import Request
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+import os
+
 from app.core.database_utils import get_async_session
+from app.models.Database_Model import PremiumPurchase
 from app.services.admin_service import (
     require_admin,
     list_all_users,
@@ -11,7 +16,9 @@ from app.services.admin_service import (
     update_user_role,
     delete_user,
     reset_user_password,
-    get_admin_stats
+    get_admin_stats,
+    list_premium_purchases,
+    update_premium_status,
 )
 from pydantic import BaseModel, EmailStr
 
@@ -38,6 +45,56 @@ async def get_stats_route(
     """Get admin dashboard statistics"""
     require_admin(request)
     return await get_admin_stats(session)
+
+
+@router.get("/premium-purchases", status_code=status.HTTP_200_OK)
+async def list_premium_purchases_route(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    status: str = Query(None),
+):
+    """List all premium purchases for admin review."""
+    require_admin(request)
+    return await list_premium_purchases(session, status)
+
+
+class UpdatePremiumStatusRequest(BaseModel):
+    status: str
+
+
+@router.patch("/premium-purchases/{purchase_id}", status_code=status.HTTP_200_OK)
+async def update_premium_status_route(
+    purchase_id: int,
+    request_body: UpdatePremiumStatusRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Approve or reject a premium purchase (admin only)."""
+    require_admin(request)
+    return await update_premium_status(purchase_id, request_body.status, session)
+
+
+@router.get("/premium-purchases/{purchase_id}/transcript")
+async def get_premium_transcript_route(
+    purchase_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Download/preview a user's payment transcript (admin only)."""
+    require_admin(request)
+
+    stmt = select(PremiumPurchase).where(PremiumPurchase.id == purchase_id)
+    res = await session.execute(stmt)
+    purchase = res.scalar_one_or_none()
+
+    if not purchase or not purchase.transcript_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found")
+
+    if not os.path.exists(purchase.transcript_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transcript file missing")
+
+    filename = os.path.basename(purchase.transcript_path)
+    return FileResponse(path=purchase.transcript_path, filename=filename)
 
 
 @router.get("/users", status_code=status.HTTP_200_OK)

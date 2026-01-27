@@ -35,8 +35,38 @@ except Exception as e:
     raise
 
 # Optimized chunk sizes for better performance
-UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB chunks for upload
+DEFAULT_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB chunks for upload
 DOWNLOAD_CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB chunks for download
+
+
+def get_plan_limits(quota: UserQuotas) -> dict:
+    """
+    Determine plan limits based on the user's total quota.
+
+    - Basic:   < 100 GB total quota  -> max file 2 GB, limited speed
+    - Premium: >= 100 GB and < 500 GB -> max file 5 GB, normal speed
+    - Premium+:>= 500 GB              -> max file 20 GB, high speed
+    """
+    total_gb = (quota.max_storage_size or 0) / (1024 ** 3)
+
+    if total_gb >= 500:
+        return {
+            "tier": "premium_plus",
+            "max_file_bytes": 20 * 1024 ** 3,
+            "upload_chunk_size": 16 * 1024 * 1024,  # 16 MB
+        }
+    if total_gb >= 100:
+        return {
+            "tier": "premium",
+            "max_file_bytes": 5 * 1024 ** 3,
+            "upload_chunk_size": 8 * 1024 * 1024,  # 8 MB
+        }
+    # Basic
+    return {
+        "tier": "basic",
+        "max_file_bytes": 2 * 1024 ** 3,
+        "upload_chunk_size": 4 * 1024 * 1024,  # 4 MB
+    }
 
 
 def get_user_storage_dir(user_id: int, username: str) -> Path:
@@ -89,41 +119,80 @@ async def upload_file(request: Request, session: AsyncSession, file: UploadFile 
 
     # Get user-specific storage directory
     user_dir = get_user_storage_dir(user.id, user.username)
-    
+
     # Generate unique filename to avoid conflicts
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_filename = f"{timestamp}_{file.filename}"
-    file_path = user_dir / safe_filename
+    
+    # Handle directory uploads: preserve directory structure but sanitize path
+    original_filename = file.filename or "unnamed_file"
+    # Normalize path separators (handle both / and \)
+    normalized_path = original_filename.replace("\\", "/")
+    # Extract directory path and filename
+    path_parts = normalized_path.split("/")
+    filename_only = path_parts[-1]
+    
+    # If there are parent directories, create them
+    if len(path_parts) > 1:
+        # Create directory structure with timestamp prefix
+        # Use Path.joinpath to ensure cross-platform compatibility
+        dir_parts = [f"{timestamp}_{part}" for part in path_parts[:-1]]
+        dir_structure = user_dir
+        for part in dir_parts:
+            dir_structure = dir_structure / part
+        # Create directory with proper permissions (mode only works on Unix)
+        try:
+            dir_structure.mkdir(parents=True, exist_ok=True, mode=0o755)
+        except (TypeError, PermissionError):
+            # Windows doesn't support mode parameter, or permission denied
+            dir_structure.mkdir(parents=True, exist_ok=True)
+        safe_filename = f"{timestamp}_{filename_only}"
+        file_path = dir_structure / safe_filename
+    else:
+        safe_filename = f"{timestamp}_{filename_only}"
+        file_path = user_dir / safe_filename
+
+    # Fetch or create quota once to determine plan limits
+    quota_query = select(UserQuotas).where(UserQuotas.user_id == user.id)
+    quota_result = await session.execute(quota_query)
+    quota = quota_result.scalar_one_or_none()
+    if not quota:
+        quota = UserQuotas(
+            user_id=user.id,
+            max_storage_size=DEFAULT_QUOTA_BYTES,
+            used_storage_size=0,
+        )
+        session.add(quota)
+        await session.flush()
+
+    plan_limits = get_plan_limits(quota)
+    max_file_bytes = plan_limits["max_file_bytes"]
+    upload_chunk_size = plan_limits["upload_chunk_size"]
 
     file_size = 0
     temp_chunks = []  # Store chunks temporarily for quota check
     quota_checked = False
-    
+
     try:
         # Read file in chunks and store temporarily
-        while chunk := await file.read(UPLOAD_CHUNK_SIZE):
+        while chunk := await file.read(upload_chunk_size):
             temp_chunks.append(chunk)
             file_size += len(chunk)
-            
+
+            # Enforce per-file size limit for the user's plan
+            if file_size > max_file_bytes:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=(
+                        f"Max file size for your plan is {max_file_bytes / (1024 ** 3):.0f} GB. "
+                        f"This file is {(file_size / (1024 ** 3)):.2f} GB."
+                    ),
+                )
+
             # Check quota periodically (every 10MB or at the end) to avoid too many DB queries
             check_interval = 10 * 1024 * 1024  # 10 MB
-            should_check = not quota_checked or (file_size % check_interval < UPLOAD_CHUNK_SIZE)
+            should_check = not quota_checked or (file_size % check_interval < upload_chunk_size)
             
             if should_check:
-                query = select(UserQuotas).where(UserQuotas.user_id == user.id)
-                result = await session.execute(query)
-                quota = result.scalar_one_or_none()
-                
-                if not quota:
-                    # Create quota if doesn't exist
-                    quota = UserQuotas(
-                        user_id=user.id,
-                        max_storage_size=DEFAULT_QUOTA_BYTES,
-                        used_storage_size=0
-                    )
-                    session.add(quota)
-                    await session.flush()
-                
                 # Check if this would exceed quota
                 if quota.used_storage_size + file_size > quota.max_storage_size:
                     raise HTTPException(
@@ -161,10 +230,12 @@ async def upload_file(request: Request, session: AsyncSession, file: UploadFile 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save file: {str(e)}")
 
     # Store in DB (plain_size_bytes for quota/display when encryption is used)
+    # Normalize file_path to use forward slashes for cross-platform compatibility
+    normalized_file_path = str(file_path).replace("\\", "/")
     new_file = FileTable(
         owner_id=user.id,
-        filename=file.filename,
-        file_path=str(file_path),
+        filename=original_filename,  # Store original filename with path structure
+        file_path=normalized_file_path,
         plain_size_bytes=file_size if (settings.encryption_key and is_encryption_available(settings.encryption_key)) else None,
     )
     session.add(new_file)
@@ -245,6 +316,11 @@ async def download_file(id: int, session: AsyncSession, request: Optional[Reques
                 yield chunk
 
     file_size = file_path.stat().st_size
+
+    # Increment download count
+    file.download_count = (file.download_count or 0) + 1
+    await session.commit()
+    await session.refresh(file)
     return StreamingResponse(
         file_iterator(file_path),
         media_type="application/octet-stream",
@@ -341,6 +417,7 @@ async def list_files(session: AsyncSession, request: Request, skip: int = 0, lim
                 "extension": file_path.suffix.lower() if file_path.suffix else "unknown",
                 "created_at": file.created_at.isoformat() if file.created_at else None,
                 "updated_at": file.updated_at.isoformat() if file.updated_at else None,
+                "download_count": file.download_count or 0,
             })
 
     # Get total count
@@ -506,9 +583,16 @@ async def get_directory_stats(request: Request, session: AsyncSession):
     quota_used = quota.used_storage_size
     quota_free = max(0, quota_total - quota_used)
     
-    # Calculate percentages based on quota
-    used_percentage = round((quota_used / quota_total) * 100, 2) if quota_total > 0 else 0
-    free_percentage = round((quota_free / quota_total) * 100, 2) if quota_total > 0 else 0
+    # Calculate percentages based on quota (ensure they add up to 100%)
+    if quota_total > 0:
+        used_percentage = min(100.0, round((quota_used / quota_total) * 100, 2))
+        free_percentage = round((quota_free / quota_total) * 100, 2)
+        # Ensure they add up to exactly 100% (handle rounding errors)
+        if used_percentage + free_percentage != 100.0:
+            free_percentage = round(100.0 - used_percentage, 2)
+    else:
+        used_percentage = 0.0
+        free_percentage = 0.0
 
     def format_bytes(bytes_val: int) -> dict:
         gb = round(bytes_val / 1024 ** 3, 2)

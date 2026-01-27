@@ -83,8 +83,9 @@ async def login_user(user_login: UserLogin, session: AsyncSession):
     if not verify_password(user_login.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    access_token = await create_token({"sub": str(user.id), "type":"access"})
-    refresh_token = await create_token({"sub": str(user.id), "type":"refresh"})
+    # Issue short-lived access token and long-lived refresh token
+    access_token = await create_token({"sub": str(user.id)}, token_type="access")
+    refresh_token = await create_token({"sub": str(user.id)}, token_type="refresh")
 
     """try:
         await redis_cli.set(f"refresh_token:{user.id}", refresh_token, ex=7 * 24 * 3600)
@@ -97,7 +98,8 @@ async def login_user(user_login: UserLogin, session: AsyncSession):
     )
     response.set_cookie("refresh_token", refresh_token, httponly=True, samesite="lax", max_age=7 * 24 * 3600)
     response.set_cookie("access_token", access_token, httponly=True, samesite="lax",max_age=30 * 60)
-
+    response.headers["Authorization"] = f"Bearer {access_token}"
+    response.headers["X-Refresh-Token"] = f"{refresh_token}"
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Credentials"] = "true"
 
