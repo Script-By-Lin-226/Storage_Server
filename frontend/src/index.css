@@ -80,3 +80,47 @@ body {
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Scrollbar styling (light + dark mode) */
+.scrollbar-ktt {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent; /* slate-500-ish */
+}
+
+.scrollbar-ktt::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-ktt::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-ktt::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-ktt::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.dark .scrollbar-ktt {
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent; /* slate-300-ish */
+}
+
+.dark .scrollbar-ktt::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.dark .scrollbar-ktt::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

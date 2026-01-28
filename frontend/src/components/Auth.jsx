@@ -162,20 +162,20 @@ function Auth() {
             </button>
           </div>
           <div className="text-center mb-6 sm:mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-blue-600 rounded-xl sm:rounded-2xl mb-3 sm:mb-4 shadow-lg">
-              {mode === 'login' && <LogIn className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
-              {mode === 'register' && <UserPlus className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
-              {mode === 'forgot' && <Mail className="w-7 h-7 sm:w-10 sm:h-10 text-white" />}
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary-600 rounded-2xl mb-3 sm:mb-4 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
+              <span className="text-white font-extrabold text-2xl sm:text-3xl select-none">
+                🖥
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
               {mode === 'login' && 'Welcome Back'}
               {mode === 'register' && 'Create Account'}
               {mode === 'forgot' && 'Reset Password'}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 sm:mt-2 text-sm sm:text-base">
-              {mode === 'login' && 'Sign in to your account to continue'}
-              {mode === 'register' && 'Start your journey with us today'}
-              {mode === 'forgot' && 'Enter your email to reset your password'}
+            <p className="text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-2 text-xs sm:text-sm">
+              {mode === 'login' && 'Sign in to your Kyike Tar Tein account to continue'}
+              {mode === 'register' && 'Create your Kyike Tar Tein cloud storage account'}
+              {mode === 'forgot' && 'Enter your email to reset your Kyike Tar Tein password'}
             </p>
           </div>
 

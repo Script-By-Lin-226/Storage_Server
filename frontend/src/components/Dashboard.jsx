@@ -44,14 +44,23 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <header className="bg-white dark:bg-gray-800 shadow-soft dark:shadow-soft-dark border-b border-gray-200 dark:border-gray-700">
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 shadow-soft dark:shadow-soft-dark">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16 gap-2 min-h-[3.5rem]">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex shrink-0 items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400">
-                <Folder className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="flex shrink-0 items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-primary-600 shadow-soft dark:shadow-soft-dark ring-1 ring-black/5 dark:ring-white/10">
+                <span className="text-white font-extrabold text-base sm:text-lg select-none">
+                  🖥
+                </span>
               </div>
-              <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">Kyike Tar Tein</h1>
+              <div className="flex flex-col leading-tight min-w-0">
+                <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+                  Kyike Tar Tein
+                </h1>
+                <span className="hidden xs:inline text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                  Secure Cloud Storage
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {!isAdmin && (
@@ -102,7 +111,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-10">
         {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
         {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}
         {activeTab === 'messages' && <Messages />}

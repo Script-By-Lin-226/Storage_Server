@@ -40,6 +40,8 @@ export default function Messages() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Show full conversation (user + admin + system) for this account
+  const visibleMessages = useMemo(() => messages, [messages])
   const unreadCount = useMemo(() => messages.filter((m) => !m.read_by_user).length, [messages])
 
   const fetchMessages = async () => {
@@ -159,14 +161,14 @@ export default function Messages() {
             <div className="flex items-center justify-center py-10">
               <RefreshCw className="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin" />
             </div>
-          ) : messages.length === 0 ? (
+          ) : visibleMessages.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <Bell className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               No messages yet
             </div>
           ) : (
-            <div className="space-y-3">
-              {messages.map((m) => (
+            <div className="space-y-3 max-h-[520px] overflow-auto pr-1 scrollbar-ktt">
+              {visibleMessages.map((m) => (
                 <div
                   key={m.id}
                   className={`rounded-xl border p-3 sm:p-4 ${
@@ -174,7 +176,7 @@ export default function Messages() {
                       ? 'border-blue-200 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-900/20'
                       : m.sender === 'system'
                         ? 'border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-900/20'
-                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">

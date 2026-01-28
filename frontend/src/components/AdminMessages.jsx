@@ -11,6 +11,28 @@ function formatTime(ts) {
   }
 }
 
+function renderContent(text) {
+  if (!text) return null
+  const tokens = text.split(/(\s+)/)
+  return tokens.map((t, idx) => {
+    const isUrl = /^https?:\/\//i.test(t) || /^\/[A-Za-z0-9]/.test(t)
+    if (isUrl) {
+      return (
+        <a
+          key={idx}
+          href={t}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary-600 dark:text-primary-300 underline break-words"
+        >
+          {t}
+        </a>
+      )
+    }
+    return <span key={idx}>{t}</span>
+  })
+}
+
 export default function AdminMessages() {
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState([])
@@ -122,6 +144,7 @@ export default function AdminMessages() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3">
+        {/* Inbox list (Telegram/Messenger style) */}
         <div className="border-r border-gray-200 dark:border-gray-700">
           <div className="p-3 sm:p-4">
             {loading ? (
@@ -131,12 +154,12 @@ export default function AdminMessages() {
             ) : users.length === 0 ? (
               <div className="text-center py-10 text-gray-500 dark:text-gray-400">No messages</div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[560px] overflow-auto pr-1 scrollbar-ktt">
                 {users.map((u) => (
                   <button
                     key={u.user_id}
                     type="button"
-                    onClick={() => setSelectedUserId(u.user_id)}
+                    onClick={() => setSelectedUserId(selectedUserId === u.user_id ? null : u.user_id)}
                     className={`w-full text-left px-3 py-2 rounded-xl border transition ${
                       selectedUserId === u.user_id
                         ? 'border-primary-300 dark:border-primary-700 bg-primary-50/60 dark:bg-primary-900/20'
@@ -164,13 +187,21 @@ export default function AdminMessages() {
           </div>
         </div>
 
+        {/* Conversation */}
         <div className="lg:col-span-2">
           <div className="p-4 sm:p-6">
             {!selectedUserId ? (
-              <div className="text-center py-10 text-gray-500 dark:text-gray-400">Select a user</div>
+              <div className="text-center py-10 text-gray-500 dark:text-gray-400">Select a user to view conversation</div>
             ) : (
               <>
-                <div className="space-y-3 max-h-[420px] overflow-auto pr-1">
+                <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  Chat with{' '}
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    {users.find((u) => u.user_id === selectedUserId)?.username || `User #${selectedUserId}`}
+                  </span>
+                </div>
+
+                <div className="space-y-3 max-h-[460px] overflow-auto pr-1 scrollbar-ktt">
                   {selectedMessages.map((m) => (
                     <div
                       key={m.id}
@@ -188,9 +219,9 @@ export default function AdminMessages() {
                         </div>
                         <div className="text-[11px] text-gray-500 dark:text-gray-400">{formatTime(m.created_at)}</div>
                       </div>
-                      <pre className="mt-2 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-100 font-sans">
-                        {m.content}
-                      </pre>
+                      <div className="mt-2 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-100 font-sans leading-relaxed">
+                        {renderContent(m.content)}
+                      </div>
                     </div>
                   ))}
                 </div>
