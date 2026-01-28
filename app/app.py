@@ -6,7 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.database_utils import database_initialize
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.token_rotation_middleware import TokenRotationMiddleware
-from app.routes.v1 import auth_route, file_route, admin_route, user_route, premium_route
+from app.routes.v1 import auth_route, file_route, admin_route, user_route, premium_route, message_route
 
 
 @asynccontextmanager
@@ -51,3 +51,4 @@ app.include_router(file_route.router)
 app.include_router(user_route.router)
 app.include_router(admin_route.router)
 app.include_router(premium_route.router)
+app.include_router(message_route.router)

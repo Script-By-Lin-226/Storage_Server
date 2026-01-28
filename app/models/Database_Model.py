@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, func, DateTime
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, func, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from app.core.database_utils import Base
@@ -18,6 +18,11 @@ class UserTable(Base):
     files = relationship("FileTable", back_populates="user", cascade="all, delete-orphan")
     premium_purchases = relationship(
         "PremiumPurchase",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    messages = relationship(
+        "UserMessage",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -76,3 +81,32 @@ class PremiumPurchase(Base):
     created_at = Column(DateTime(timezone=True), default=func.now())
 
     user = relationship("UserTable", back_populates="premium_purchases")
+
+
+class UserMessage(Base):
+    """
+    In-app messages between a user and admin, plus system reminders.
+
+    - user_id: the "customer" this conversation belongs to
+    - sender: "user" | "admin" | "system"
+    - message_type: "general" | "expiry_reminder"
+    - related_expires_at: used for deduping expiry reminders
+    """
+
+    __tablename__ = "user_messages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    sender = Column(String, nullable=False, default="user")
+    message_type = Column(String, nullable=False, default="general")
+    content = Column(String, nullable=False)
+
+    related_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    read_by_user = Column(Boolean, nullable=False, default=False)
+    read_by_admin = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    user = relationship("UserTable", back_populates="messages")

@@ -376,7 +376,7 @@ function Premium() {
 
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Myanmar phone number
+                Your phone number
               </label>
               <div className="relative">
                 <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -394,7 +394,7 @@ function Premium() {
               </p>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Payment method
               </label>
@@ -422,6 +422,19 @@ function Premium() {
                   Wave Pay
                 </button>
               </div>
+              {paymentMethod && (
+                <div className="mt-3 rounded-xl border border-primary-200 dark:border-primary-900/60 bg-primary-50/60 dark:bg-primary-900/20 px-3 py-4">
+                  <p className="text-xs font-semibold text-primary-700 dark:text-primary-300">
+                    {paymentMethod === 'KBZ_PAY' ? 'KBZ Pay Transfer Account' : 'Wave Pay Transfer Account'}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                    09941549351 <span className="text-xs font-medium text-gray-600 dark:text-gray-300">(Lynn Lynn Aung)</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-600 dark:text-gray-400">
+                    After transfer, upload your transcript and submit for admin approval.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

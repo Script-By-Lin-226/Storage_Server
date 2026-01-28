@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   XCircle
 } from 'lucide-react'
+import AdminMessages from './AdminMessages'
 
 function AdminPanel() {
   const [users, setUsers] = useState([])
@@ -306,6 +307,17 @@ function AdminPanel() {
             </span>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('messages')}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+            activeTab === 'messages'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Messages
+        </button>
       </div>
 
       {activeTab === 'users' && (
@@ -502,6 +514,8 @@ function AdminPanel() {
           )}
         </div>
       )}
+
+      {activeTab === 'messages' && <AdminMessages />}
 
       {/* Quota Modal */}
       {showQuotaModal && selectedUser && (

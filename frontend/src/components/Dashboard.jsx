@@ -4,7 +4,8 @@ import { useTheme } from '../context/ThemeContext'
 import FileManager from './FileManager'
 import StatsPanel from './StatsPanel'
 import AdminPanel from './AdminPanel'
-import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown } from 'lucide-react'
+import Messages from './Messages'
+import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown, MessageSquare } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +38,7 @@ function Dashboard() {
   const navItems = [
     { id: 'files', label: 'Files', shortLabel: 'Files', icon: Folder },
     { id: 'stats', label: 'Statistics', shortLabel: 'Stats', icon: BarChart3 },
+    { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageSquare },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', shortLabel: 'Admin', icon: Shield }] : []),
   ]
 
@@ -49,7 +51,7 @@ function Dashboard() {
               <div className="flex shrink-0 items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400">
                 <Folder className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">Storage</h1>
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">Kyike Tar Tein</h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {!isAdmin && (
@@ -103,8 +105,26 @@ function Dashboard() {
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
         {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}
+        {activeTab === 'messages' && <Messages />}
         {activeTab === 'admin' && isAdmin && <AdminPanel />}
       </main>
+
+      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 text-sm text-gray-600 dark:text-gray-400 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          <div>© {new Date().getFullYear()} Kyike Tar Tein. All rights reserved.</div>
+          <div className="flex items-center gap-2">
+            <span>Contact:</span>
+            <a
+              className="text-primary-600 dark:text-primary-400 hover:underline"
+              href="https://t.me/Liam_226"
+              target="_blank"
+              rel="noreferrer"
+            >
+              @Liam_226
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

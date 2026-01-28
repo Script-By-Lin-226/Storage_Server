@@ -40,6 +40,12 @@ function StatsPanel({ stats, loading }) {
 
   const { user_storage, quota, file_types } = stats
 
+  const clampPercent = (value) => {
+    const num = Number(value)
+    if (!Number.isFinite(num)) return 0
+    return Math.max(0, Math.min(100, num))
+  }
+
   const formatPercent = (value) => {
     if (value == null || Number.isNaN(value)) return '0.0'
     const num = Number(value)
@@ -141,10 +147,10 @@ function StatsPanel({ stats, loading }) {
                     {quota?.used?.formatted || '0 B'} / {quota?.total?.formatted || '0 B'}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4">
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4 overflow-hidden">
                   <div
                     className="bg-primary-600 h-4 rounded-full transition-all duration-500"
-                    style={{ width: `${quota?.used_percentage || 0}%` }}
+                    style={{ width: `${clampPercent(quota?.used_percentage)}%` }}
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -158,10 +164,10 @@ function StatsPanel({ stats, loading }) {
                     {quota?.free?.formatted || '0 B'}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4">
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4 overflow-hidden">
                   <div
                     className="bg-green-500 h-4 rounded-full transition-all duration-500"
-                    style={{ width: `${quota?.free_percentage || 0}%` }}
+                    style={{ width: `${clampPercent(quota?.free_percentage)}%` }}
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
