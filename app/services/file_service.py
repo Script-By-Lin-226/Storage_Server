@@ -578,19 +578,34 @@ async def get_directory_stats(request: Request, session: AsyncSession):
             ext = file_path.suffix.lower() if file_path.suffix else "unknown"
             file_types[ext] = file_types.get(ext, 0) + 1
 
-    # Use quota information instead of disk usage
-    quota_total = quota.max_storage_size
-    quota_used = quota.used_storage_size
-    quota_free = max(0, quota_total - quota_used)
+    # Use quota information and actual file sizes for accurate calculations
+    quota_total = quota.max_storage_size if quota.max_storage_size is not None else 0
+    # Use database quota.used_storage_size for percentage calculations (this is what gets updated)
+    # This ensures the percentage reflects the tracked quota usage, not just files on disk
+    if quota.used_storage_size is not None:
+        quota_used = quota.used_storage_size
+    else:
+        # Fallback to calculated total_size if database value is not set
+        quota_used = total_size
     
     # Calculate percentages based on quota (ensure they add up to 100%)
     if quota_total > 0:
-        used_percentage = min(100.0, round((quota_used / quota_total) * 100, 2))
-        free_percentage = round((quota_free / quota_total) * 100, 2)
-        # Ensure they add up to exactly 100% (handle rounding errors)
-        if used_percentage + free_percentage != 100.0:
-            free_percentage = round(100.0 - used_percentage, 2)
+        # Ensure quota_used doesn't exceed quota_total
+        quota_used = min(quota_used, quota_total)
+        # Recalculate quota_free after clamping quota_used
+        quota_free = max(0, quota_total - quota_used)
+        
+        # Calculate used percentage first
+        used_percentage = round((quota_used / quota_total) * 100, 2)
+        # Clamp to valid range
+        used_percentage = max(0.0, min(100.0, used_percentage))
+        
+        # Calculate free percentage directly from used percentage to ensure they add up to exactly 100%
+        free_percentage = round(100.0 - used_percentage, 2)
+        free_percentage = max(0.0, min(100.0, free_percentage))
     else:
+        # If quota_total is 0 or None, set percentages to 0
+        quota_free = 0
         used_percentage = 0.0
         free_percentage = 0.0
 
@@ -613,8 +628,8 @@ async def get_directory_stats(request: Request, session: AsyncSession):
         "quota": {
             "total": format_bytes(quota_total),
             "total_bytes": quota_total,
-            "used": format_bytes(quota_used),
-            "used_bytes": quota_used,
+            "used": format_bytes(quota_used),  # Uses quota.used_storage_size from database
+            "used_bytes": quota_used,  # Uses quota.used_storage_size from database
             "free": format_bytes(quota_free),
             "free_bytes": quota_free,
             "free_percentage": free_percentage,
