@@ -19,6 +19,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('files')
   const [showProfile, setShowProfile] = useState(false)
+  const [mountFilesTab, setMountFilesTab] = useState(false)
   const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
@@ -29,7 +30,38 @@ function Dashboard() {
       const interval = setInterval(fetchStats, 30000)
       return () => clearInterval(interval)
     }
-  }, [])
+  }, [activeTab])
+
+  useEffect(() => {
+    // LCP optimization: FileManager is usually the heaviest tab. Delay mounting it until the browser is idle
+    // so the header + shell can paint quickly.
+    let cancelled = false
+
+    if (activeTab !== 'files') {
+      setMountFilesTab(false)
+      return
+    }
+
+    const mount = () => {
+      if (!cancelled) setMountFilesTab(true)
+    }
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(mount, { timeout: 1200 })
+      return () => {
+        cancelled = true
+        try {
+          window.cancelIdleCallback(id)
+        } catch (_) {}
+      }
+    }
+
+    const t = window.setTimeout(mount, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [activeTab])
 
   const fetchStats = async () => {
     try {
@@ -147,7 +179,12 @@ function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-10">
         <Suspense fallback={tabFallback}>
-          {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
+          {activeTab === 'files' &&
+            (mountFilesTab ? (
+              <FileManager onFileChange={fetchStats} />
+            ) : (
+              tabFallback
+            ))}
           {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}
           {activeTab === 'messages' && <Messages />}
           {activeTab === 'admin' && isAdmin && <AdminPanel />}

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -11,6 +11,37 @@ const Dashboard = lazy(() => import('./components/Dashboard'))
 const Auth = lazy(() => import('./components/Auth'))
 const Premium = lazy(() => import('./components/Premium'))
 const Profile = lazy(() => import('./components/Profile'))
+
+function useIdleMount(delayMs = 2000) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const mount = () => {
+      if (!cancelled) setMounted(true)
+    }
+
+    // Prefer idle time to avoid stealing main-thread during FCP/LCP.
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(mount, { timeout: delayMs })
+      return () => {
+        cancelled = true
+        try {
+          window.cancelIdleCallback(id)
+        } catch (_) {}
+      }
+    }
+
+    const t = window.setTimeout(mount, delayMs)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [delayMs])
+
+  return mounted
+}
 
 
 function ProtectedRoute({ children }) {
@@ -28,6 +59,8 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
+  const mountTelemetry = useIdleMount(2000)
+
   return (
     <ThemeProvider>
       <ToastProvider>
@@ -70,8 +103,12 @@ function App() {
               </Routes>
             </Suspense>
           </Router>
-          <SpeedInsights />
-          <Analytics />
+          {mountTelemetry && (
+            <>
+              <SpeedInsights />
+              <Analytics />
+            </>
+          )}
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
