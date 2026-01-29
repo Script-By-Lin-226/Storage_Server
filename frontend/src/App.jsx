@@ -1,15 +1,16 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import Dashboard from './components/Dashboard'
-import Auth from './components/Auth'
-import Premium from './components/Premium'
-import Profile from './components/Profile'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { Analytics } from "@vercel/analytics/react"
 import './App.css'
+
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const Auth = lazy(() => import('./components/Auth'))
+const Premium = lazy(() => import('./components/Premium'))
+const Profile = lazy(() => import('./components/Profile'))
 
 
 function ProtectedRoute({ children }) {
@@ -32,34 +33,42 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <Router>
-            <Routes>
-              <Route path="/login" element={<Auth />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/premium"
-                element={
-                  <ProtectedRoute>
-                    <Premium />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+                  <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-500 border-t-transparent" />
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="/login" element={<Auth />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/premium"
+                  element={
+                    <ProtectedRoute>
+                      <Premium />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Suspense>
           </Router>
           <SpeedInsights />
           <Analytics />
