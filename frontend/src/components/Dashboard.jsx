@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import FileManager from './FileManager'
-import StatsPanel from './StatsPanel'
-import AdminPanel from './AdminPanel'
-import Messages from './Messages'
-import Profile from './Profile'
 import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown, MessageSquare, X } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+
+const FileManager = lazy(() => import('./FileManager'))
+const StatsPanel = lazy(() => import('./StatsPanel'))
+const AdminPanel = lazy(() => import('./AdminPanel'))
+const Messages = lazy(() => import('./Messages'))
+const Profile = lazy(() => import('./Profile'))
 
 function Dashboard() {
   const { logout, user } = useAuth()
@@ -21,9 +22,13 @@ function Dashboard() {
   const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 30000)
-    return () => clearInterval(interval)
+    // LCP optimization: avoid network + state churn during first paint when user is on "Files".
+    // Fetch stats when needed, and only poll while the statistics tab is open.
+    if (activeTab === 'stats') {
+      fetchStats()
+      const interval = setInterval(fetchStats, 30000)
+      return () => clearInterval(interval)
+    }
   }, [])
 
   const fetchStats = async () => {
@@ -37,12 +42,36 @@ function Dashboard() {
     }
   }
 
-  const navItems = [
-    { id: 'files', label: 'Files', shortLabel: 'Files', icon: Folder },
-    { id: 'stats', label: 'Statistics', shortLabel: 'Stats', icon: BarChart3 },
-    { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageSquare },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', shortLabel: 'Admin', icon: Shield }] : []),
-  ]
+  const navItems = useMemo(
+    () => [
+      { id: 'files', label: 'Files', shortLabel: 'Files', icon: Folder },
+      { id: 'stats', label: 'Statistics', shortLabel: 'Stats', icon: BarChart3 },
+      { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageSquare },
+      ...(isAdmin ? [{ id: 'admin', label: 'Admin', shortLabel: 'Admin', icon: Shield }] : []),
+    ],
+    [isAdmin],
+  )
+
+  useEffect(() => {
+    if (activeTab === 'stats') fetchStats()
+  }, [activeTab])
+
+  const tabFallback = (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 shadow-soft dark:shadow-soft-dark">
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+          <div className="h-3 w-64 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2">
+        <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+        <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+        <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#121212] transition-colors">
@@ -117,10 +146,12 @@ function Dashboard() {
       </div>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-10">
-        {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
-        {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}
-        {activeTab === 'messages' && <Messages />}
-        {activeTab === 'admin' && isAdmin && <AdminPanel />}
+        <Suspense fallback={tabFallback}>
+          {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
+          {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}
+          {activeTab === 'messages' && <Messages />}
+          {activeTab === 'admin' && isAdmin && <AdminPanel />}
+        </Suspense>
       </main>
 
       <footer className="mt-15 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#121212]">
@@ -168,7 +199,9 @@ function Dashboard() {
               </button>
             </div>
             <div className="px-2 sm:px-4 pb-6">
-              <Profile />
+              <Suspense fallback={<div className="px-4 py-6 text-sm text-[#4E5153] dark:text-[#B9B9B9]">Loading profile...</div>}>
+                <Profile />
+              </Suspense>
             </div>
           </div>
         </div>
