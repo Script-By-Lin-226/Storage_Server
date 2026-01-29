@@ -239,7 +239,7 @@ function Auth() {
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
-                className="text-sm text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-medium transition-colors"
+                  className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -248,7 +248,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3.5 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -269,7 +269,7 @@ function Auth() {
                   <button
                     type="button"
                     onClick={() => setMode('register')}
-                    className="text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors"
+                    className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-semibold transition-colors"
                   >
                     Sign up
                   </button>
@@ -346,7 +346,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading || password !== confirmPassword}
-                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3.5 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -364,7 +364,7 @@ function Auth() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{' '}
-                  <button type="button" onClick={() => setMode('login')} className="text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors">
+                  <button type="button" onClick={() => setMode('login')} className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-semibold transition-colors">
                     Sign in
                   </button>
                 </p>
@@ -386,7 +386,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3.5 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -402,7 +402,7 @@ function Auth() {
               </button>
 
               <div className="text-center">
-                <button type="button" onClick={() => setMode('login')} className="text-sm text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors flex items-center justify-center gap-1">
+                <button type="button" onClick={() => setMode('login')} className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-semibold transition-colors flex items-center justify-center gap-1">
                   <ArrowRight className="w-4 h-4 rotate-180" />
                   Back to Sign In
                 </button>

@@ -292,12 +292,15 @@ function FileManager({ onFileChange }) {
     const rootFiles = []
     const searchLower = searchTerm.toLowerCase()
 
-    // First, group all files by folders
+    // First, group all files by folders - ensure each file is only added once
     for (const file of files) {
       const name = file.filename || ''
-      const parts = name.split('/')
+      if (!name) continue // Skip files without names
+      
+      const parts = name.split('/').filter(p => p.length > 0) // Filter out empty parts
 
       if (parts.length > 1) {
+        // File is in a folder
         const folderName = parts[0]
         const relativePath = parts.slice(1).join('/')
 
@@ -309,21 +312,36 @@ function FileManager({ onFileChange }) {
           }
         }
 
-        folders[folderName].files.push({
-          ...file,
-          displayName: relativePath || file.filename,
-        })
+        // Only add file if it's not already in the folder (prevent duplicates)
+        const fileExists = folders[folderName].files.some(f => f.id === file.id)
+        if (!fileExists) {
+          folders[folderName].files.push({
+            ...file,
+            displayName: relativePath || file.filename,
+          })
+        }
       } else {
-        rootFiles.push({
-          ...file,
-          displayName: file.filename,
-        })
+        // Root file (no folder path)
+        // Only add if not already in rootFiles (prevent duplicates)
+        const fileExists = rootFiles.some(f => f.id === file.id)
+        if (!fileExists) {
+          rootFiles.push({
+            ...file,
+            displayName: file.filename,
+          })
+        }
       }
     }
 
     // Apply filtering: include folders if folder name matches OR if any file within matches
+    // If searchTerm is empty, show all folders and files
     const filteredFolders = Object.values(folders)
       .map((folder) => {
+        if (!searchTerm) {
+          // No search term - show all folders with all files
+          return folder
+        }
+        
         const folderNameMatches = folder.name.toLowerCase().includes(searchLower)
         const filteredFiles = folder.files.filter((file) => {
           const fileName = (file.displayName || file.filename || '').toLowerCase()
@@ -342,11 +360,13 @@ function FileManager({ onFileChange }) {
       })
       .filter((f) => f !== null)
 
-    // Filter root files
-    const filteredRootFiles = rootFiles.filter((file) => {
-      const fileName = (file.displayName || file.filename || '').toLowerCase()
-      return fileName.includes(searchLower)
-    })
+    // Filter root files - if no search term, show all
+    const filteredRootFiles = !searchTerm 
+      ? rootFiles 
+      : rootFiles.filter((file) => {
+          const fileName = (file.displayName || file.filename || '').toLowerCase()
+          return fileName.includes(searchLower)
+        })
 
     // Sort files within each folder and root files
     const mult = sortDir === 'asc' ? 1 : -1
@@ -805,7 +825,7 @@ function FileManager({ onFileChange }) {
               })}
             </div>
             {/* Desktop: table (grouped by folder) */}
-            <div className=" md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
