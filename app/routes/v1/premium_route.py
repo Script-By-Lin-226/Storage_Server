@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException, Response
+from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -69,10 +69,8 @@ def _get_plan_by_id(plan_id: str) -> Optional[dict]:
 
 
 @router.get("/plans", status_code=status.HTTP_200_OK)
-async def list_premium_plans(response: Response) -> List[dict]:
+async def list_premium_plans() -> List[dict]:
     """Return available premium plans for the frontend pricing page."""
-    # This endpoint is static; allow aggressive caching to reduce repeated API hits.
-    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     return PREMIUM_PLANS
 
 

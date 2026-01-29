@@ -11,7 +11,7 @@ from app.services.file_service import (
     rename_file,
     get_directory_stats
 )
-from fastapi import File, UploadFile, APIRouter, Depends, Query, Response
+from fastapi import File, UploadFile, APIRouter, Depends, Query
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/files", tags=["Files"])
@@ -35,24 +35,16 @@ async def list_files_route(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    response: Response = None,
+    limit: int = Query(100, ge=1, le=1000)
 ):
-    # User-specific: allow very short client caching to smooth rapid UI refreshes without staleness risk.
-    if response is not None:
-        response.headers["Cache-Control"] = "private, max-age=2"
     return await list_files(session, request, skip, limit)
 
 
 @router.get("/stats", status_code=status.HTTP_200_OK)
 async def get_stats_route(
     request: Request,
-    session: AsyncSession = Depends(get_async_session),
-    response: Response = None,
+    session: AsyncSession = Depends(get_async_session)
 ):
-    # Stats update frequently; still allow a tiny cache window to reduce repeated requests during navigation.
-    if response is not None:
-        response.headers["Cache-Control"] = "private, max-age=5"
     return await get_directory_stats(request, session)
 
 
