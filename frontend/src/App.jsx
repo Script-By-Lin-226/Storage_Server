@@ -7,6 +7,8 @@ import Profile from './components/Profile'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react"
 import './App.css'
 
 
@@ -59,6 +61,8 @@ function App() {
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Router>
+          <SpeedInsights />
+          <Analytics />
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>

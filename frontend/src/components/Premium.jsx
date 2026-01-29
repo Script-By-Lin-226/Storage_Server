@@ -52,7 +52,7 @@ function Premium() {
   const [submitting, setSubmitting] = useState(false)
   const [purchases, setPurchases] = useState([])
   const [activePurchase, setActivePurchase] = useState(null)
-  const [showAllPayments, setShowAllPayments] = useState(false)
+    const [showAllPayments, setShowAllPayments] = useState(false)
 
   useEffect(() => {
     const fetchPurchases = async () => {
