@@ -7,6 +7,15 @@ const AuthContext = createContext()
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api'
 const isNgrok = apiBase.includes('ngrok')
 
+// Configure axios defaults ONCE (module init). Doing this inside the provider causes repeated work every render.
+axios.defaults.baseURL = apiBase
+axios.defaults.headers.common['Content-Type'] = 'application/json'
+axios.defaults.withCredentials = true
+// Ngrok free tier shows "Visit Site" HTML for browser requests; this header skips it so API returns JSON
+if (isNgrok) {
+  axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true'
+}
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
@@ -20,15 +29,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
-
-  // Configure axios defaults
-  axios.defaults.baseURL = apiBase
-  axios.defaults.headers.common['Content-Type'] = 'application/json'
-  axios.defaults.withCredentials = true
-  // Ngrok free tier shows "Visit Site" HTML for browser requests; this header skips it so API returns JSON
-  if (isNgrok) {
-    axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true'
-  }
 
   const fetchUserInfo = async () => {
     try {

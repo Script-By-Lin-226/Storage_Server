@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.core.database_utils import database_initialize
 from app.middleware.auth_middleware import AuthMiddleware
@@ -34,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Compress JSON responses to reduce payload size and improve perceived API latency.
+# Keep threshold low since most API responses are JSON and benefit from gzip.
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
 @app.get("/")
