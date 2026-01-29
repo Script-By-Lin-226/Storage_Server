@@ -5,7 +5,8 @@ import FileManager from './FileManager'
 import StatsPanel from './StatsPanel'
 import AdminPanel from './AdminPanel'
 import Messages from './Messages'
-import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown, MessageSquare } from 'lucide-react'
+import Profile from './Profile'
+import { LogOut, Folder, BarChart3, Shield, Moon, Sun, User, Crown, MessageSquare, X } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -16,6 +17,7 @@ function Dashboard() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('files')
+  const [showProfile, setShowProfile] = useState(false)
   const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
@@ -43,21 +45,19 @@ function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 shadow-soft dark:shadow-soft-dark">
+    <div className="min-h-screen bg-white dark:bg-[#121212] transition-colors">
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#121212]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-soft dark:shadow-soft-dark">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16 gap-2 min-h-[3.5rem]">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex shrink-0 items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-primary-600 shadow-soft dark:shadow-soft-dark ring-1 ring-black/5 dark:ring-white/10">
-                <span className="text-white font-extrabold text-base sm:text-lg select-none">
-                  🖥
-                </span>
-              </div>
-              <div className="flex flex-col leading-tight min-w-0">
-                <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+              <div
+                className="flex flex-col leading-tight min-w-0 cursor-pointer"
+                onClick={() => setShowProfile(true)}
+              >
+                <span className="ktt-logo-font text-base sm:text-2xl text-[#121212] dark:text-white tracking-tight truncate">
                   Kyike Tar Tein
-                </h1>
-                <span className="hidden xs:inline text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                </span>
+                <span className="hidden xs:inline text-[11px] sm:text-xs text-[#4E5153] dark:text-[#B9B9B9]">
                   Secure Cloud Storage
                 </span>
               </div>
@@ -74,10 +74,15 @@ function Dashboard() {
                   <span className="hidden sm:inline">Premium</span>
                 </button>
               )}
-              <span className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm truncate max-w-[120px] lg:max-w-[180px]">
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+                className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm truncate max-w-[120px] lg:max-w-[180px]"
+                title="View profile"
+              >
                 <User className="w-4 h-4 shrink-0" />
                 <span className="truncate">{user?.username || user?.email}</span>
-              </span>
+              </button>
               <button type="button" onClick={toggleTheme} className="touch-target inline-flex items-center justify-center p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={dark ? 'Light mode' : 'Dark mode'}>
                 {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
@@ -90,7 +95,7 @@ function Dashboard() {
         </div>
       </header>
 
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto overflow-y-hidden -mb-px">
+      <div className="bg-white dark:bg-[#121212] border-b border-gray-200 dark:border-gray-800 overflow-x-auto overflow-y-hidden -mb-px">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <nav className="flex gap-0.5 sm:gap-1 min-w-0">
             {navItems.map(({ id, label, shortLabel, icon: Icon }) => (
@@ -99,8 +104,8 @@ function Dashboard() {
                 onClick={() => setActiveTab(id)}
                 className={`touch-target flex items-center shrink-0 py-3.5 sm:py-4 px-3 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition rounded-t-lg whitespace-nowrap ${
                   activeTab === id
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400 bg-primary-50/50 dark:bg-primary-900/20'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    ? 'border-[#86FF3B] text-[#121212] dark:text-[#86FF3B] bg-[#F5FFEC] dark:bg-[#121212]'
+                    : 'border-transparent text-[#4E5153] dark:text-gray-400 hover:text-[#121212] dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 shrink-0" />
@@ -118,13 +123,13 @@ function Dashboard() {
         {activeTab === 'admin' && isAdmin && <AdminPanel />}
       </main>
 
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 text-sm text-gray-600 dark:text-gray-400 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+      <footer className="mt-15 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#121212]">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 text-sm text-[#4E5153] dark:text-[#B9B9B9] flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
           <div>© {new Date().getFullYear()} Kyike Tar Tein. All rights reserved.</div>
           <div className="flex items-center gap-2">
-            <span>Contact:</span>
+            <span>Contact Telegram:</span>
             <a
-              className="text-primary-600 dark:text-primary-400 hover:underline"
+              className="text-[#86FF3B] hover:underline"
               href="https://t.me/Liam_226"
               target="_blank"
               rel="noreferrer"
@@ -134,6 +139,40 @@ function Dashboard() {
           </div>
         </div>
       </footer>
+
+      {showProfile && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 dark:bg-black/60"
+            onClick={() => setShowProfile(false)}
+            aria-label="Close profile"
+          />
+          <div className="relative z-50 h-full w-full max-w-md bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl animate-slide-in-right overflow-y-auto scrollbar-ktt">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="ktt-logo-font text-base text-[#121212] dark:text-white tracking-tight truncate">
+                  Kyike Tar Tein
+                </span>
+                <span className="hidden sm:inline text-[11px] text-[#4E5153] dark:text-[#B9B9B9]">
+                
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfile(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:text-[#121212] dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Close profile"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-2 sm:px-4 pb-6">
+              <Profile />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

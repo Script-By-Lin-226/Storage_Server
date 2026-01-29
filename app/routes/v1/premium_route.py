@@ -6,11 +6,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.core.config import settings
 from app.core.database_utils import get_async_session
 from app.models.Database_Model import PremiumPurchase, UserQuotas
+from app.services.message_service import create_purchase_confirmation_message
 from app.services.file_service import UPLOAD_DIR
 
 router = APIRouter(prefix="/premium", tags=["Premium"])
@@ -39,8 +40,7 @@ PREMIUM_PLANS = [
             "100 GB secure storage",
             "Max file size 5 GB",
             "Normal upload speed",
-            "Folder sharing access",
-            "File sharing links",
+            "Folder Uploading Access",
         ],
     },
     {
@@ -55,7 +55,6 @@ PREMIUM_PLANS = [
             "500 GB secure storage",
             "Max file size 20 GB",
             "High upload speed",
-            "Folder uploading",
             "Advanced download statistics",
         ],
     },
@@ -137,6 +136,21 @@ async def create_premium_purchase(
 
     await session.commit()
     await session.refresh(purchase)
+
+    # Create a system message confirming the purchase (even while pending)
+    # Assume next billing is 30 days from now for messaging purposes
+    try:
+        next_billing = datetime.now(timezone.utc) + timedelta(days=30)
+        await create_purchase_confirmation_message(
+            user_id=user.id,
+            plan_name=plan["name"],
+            amount_ks=plan["price_ks"],
+            next_billing_date=next_billing,
+            session=session,
+        )
+    except Exception:
+        # Do not break the purchase flow if messaging fails
+        pass
 
     return {
         "id": purchase.id,

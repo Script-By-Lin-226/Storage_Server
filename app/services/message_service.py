@@ -83,7 +83,7 @@ def _expiry_reminder_template(service_name: str, expiration_date: str) -> str:
     return (
         f"We wanted to remind you that your subscription for {service_name} will expire on {expiration_date}.\n\n"
         "To avoid interruption:\n"
-        " • Renew Now: /premium\n"
+        " • Renew Now\n"
         " • Cancel Subscription: Contact admin\n\n"
         "Thank you for choosing KTT!\n\n"
         "If you have any questions, feel free to contact our support team.\n\n"
@@ -150,6 +150,43 @@ async def create_expiry_reminder_if_needed(
     await session.commit()
     await session.refresh(msg)
     return {"created": True, "id": msg.id, "expires_at": purchase.expires_at.isoformat()}
+
+
+def _purchase_confirmation_template(plan_name: str, amount_ks: int, next_billing_date: str) -> str:
+    return (
+        "System: Thank you for your purchase!\n"
+        f"Plan You Choice: {plan_name}\n"
+        f"Amount paid: {amount_ks:,} ks\n"
+        f"Next billing date: {next_billing_date}\n"
+        "System: Enjoy your storage 🚀"
+    )
+
+
+async def create_purchase_confirmation_message(
+    user_id: int,
+    plan_name: str,
+    amount_ks: int,
+    next_billing_date: datetime,
+    session: AsyncSession,
+):
+    """
+    Create a system message confirming a user's premium purchase.
+    This is called right after a purchase is created.
+    """
+    # Format date as ISO (YYYY-MM-DD) for consistency
+    next_date_str = next_billing_date.date().isoformat()
+    msg = UserMessage(
+        user_id=user_id,
+        sender="system",
+        message_type="purchase_confirmation",
+        content=_purchase_confirmation_template(plan_name, amount_ks, next_date_str),
+        read_by_user=False,
+        read_by_admin=True,
+    )
+    session.add(msg)
+    await session.commit()
+    await session.refresh(msg)
+    return {"id": msg.id}
 
 
 async def admin_list_messages(session: AsyncSession, user_id: int | None = None, limit: int = 500):

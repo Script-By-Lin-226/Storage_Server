@@ -142,13 +142,7 @@ function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative overflow-hidden bg-gradient-to-br from-primary-50 via-primary-100 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-200 dark:bg-primary-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-blue-200 dark:bg-blue-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-purple-200 dark:bg-purple-900/30 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-xl opacity-30 animate-blob animation-delay-4000" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 bg-white dark:bg-[#121212] transition-colors">
       <div className="relative z-10 w-full max-w-md">
         <div className="relative bg-white dark:bg-gray-800 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 md:p-10 border border-gray-200/50 dark:border-gray-700 transition-colors duration-300">
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
@@ -162,17 +156,17 @@ function Auth() {
             </button>
           </div>
           <div className="text-center mb-6 sm:mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary-600 rounded-2xl mb-3 sm:mb-4 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
-              <span className="text-white font-extrabold text-2xl sm:text-3xl select-none">
-                🖥
+            <div className="mb-2 sm:mb-3">
+              <span className="ktt-logo-font text-2xl sm:text-3xl text-[#121212] dark:text-white tracking-tight select-none">
+                Kyike Tar Tein
               </span>
             </div>
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
-              {mode === 'login' && 'Welcome Back'}
+            <h1 className="text-lg sm:text-2xl font-semibold text-[#121212] dark:text-white mb-1 sm:mb-2">
+              {mode === 'login'}
               {mode === 'register' && 'Create Account'}
               {mode === 'forgot' && 'Reset Password'}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-2 text-xs sm:text-sm">
+            <p className="text-[#4E5153] dark:text-[#B9B9B9] mt-0.5 sm:mt-2 text-xs sm:text-sm">
               {mode === 'login' && 'Sign in to your Kyike Tar Tein account to continue'}
               {mode === 'register' && 'Create your Kyike Tar Tein cloud storage account'}
               {mode === 'forgot' && 'Enter your email to reset your Kyike Tar Tein password'}
@@ -245,7 +239,7 @@ function Auth() {
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
-                  className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
+                className="text-sm text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-medium transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -254,7 +248,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-primary-600 to-blue-600 text-white py-3.5 rounded-xl font-semibold hover:from-primary-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -275,7 +269,7 @@ function Auth() {
                   <button
                     type="button"
                     onClick={() => setMode('register')}
-                    className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors"
+                    className="text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors"
                   >
                     Sign up
                   </button>
@@ -352,7 +346,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading || password !== confirmPassword}
-                className="w-full bg-gradient-to-r from-primary-600 to-blue-600 text-white py-3.5 rounded-xl font-semibold hover:from-primary-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -370,7 +364,7 @@ function Auth() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{' '}
-                  <button type="button" onClick={() => setMode('login')} className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors">
+                  <button type="button" onClick={() => setMode('login')} className="text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors">
                     Sign in
                   </button>
                 </p>
@@ -392,7 +386,7 @@ function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-primary-600 to-blue-600 text-white py-3.5 rounded-xl font-semibold hover:from-primary-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-[#86FF3B] text-[#121212] py-3.5 rounded-xl font-semibold hover:bg-[#70E033] focus:outline-none focus:ring-2 focus:ring-[#86FF3B] focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -408,7 +402,7 @@ function Auth() {
               </button>
 
               <div className="text-center">
-                <button type="button" onClick={() => setMode('login')} className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors flex items-center justify-center gap-1">
+                <button type="button" onClick={() => setMode('login')} className="text-sm text-[#86FF3B] hover:text-[#70E033] dark:text-[#86FF3B] dark:hover:text-[#A3FF70] font-semibold transition-colors flex items-center justify-center gap-1">
                   <ArrowRight className="w-4 h-4 rotate-180" />
                   Back to Sign In
                 </button>

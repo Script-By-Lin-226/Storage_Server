@@ -372,7 +372,7 @@ function AdminPanel() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[640px] divide-y divide-gray-200 dark:divide-gray-700">
+                <table className="min-w-[1214.5px] divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
@@ -432,7 +432,7 @@ function AdminPanel() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-[720px] divide-y divide-gray-200 dark:divide-gray-700">
+              <table className="min-w-[1214.5px] divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
