@@ -115,7 +115,10 @@ function Dashboard() {
               <button type="button" onClick={toggleTheme} className="touch-target inline-flex items-center justify-center p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={dark ? 'Light mode' : 'Dark mode'}>
                 {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <button onClick={logout} className="touch-target flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium text-sm sm:text-base">
+              <button
+                onClick={logout}
+                className="touch-target flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl font-medium text-sm sm:text-base"
+              >
                 <LogOut className="w-5 h-5 shrink-0" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
@@ -145,7 +148,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-10">
+      <main className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-10">
         <Suspense fallback={tabFallback}>
           {activeTab === 'files' && <FileManager onFileChange={fetchStats} />}
           {activeTab === 'stats' && <StatsPanel stats={stats} loading={loading} />}

@@ -515,7 +515,7 @@ function FileManager({ onFileChange }) {
         ) : (
           <>
             {/* Mobile: grouped card list (folders + files) */}
-            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 mt-4">
               {structuredItems.map((item, index) => {
                 if (item.type === 'folder') {
                   const isExpanded = !!expandedFolders[item.name]
@@ -532,9 +532,12 @@ function FileManager({ onFileChange }) {
                         className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 dark:active:bg-gray-700/50 transition"
                       >
                         <div className="flex items-center gap-3 min-w-0">
+                          {/* The Icon */}
                           <FolderIcon className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 dark:text-white truncate text-sm sm:text-base">
+                          
+                          {/* The Text Wrapper */}
+                          <div className="min-w-0 flex-1 flex flex-col items-start">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate text-sm sm:text-base w-full">
                               {item.name}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -549,9 +552,13 @@ function FileManager({ onFileChange }) {
                         )}
                       </button>
                       {isExpanded && (
-                        <div className="bg-gray-50/80 dark:bg-gray-800/60">
+                        <div className="bg-gray-50/80 dark:bg-gray-800/60 pt-1 pb-1">
+                          <div className="px-4 pb-1 pl-8 flex items-center gap-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                            <span>Files in {item.name}</span>
+                          </div>
                           {item.files.map((file) => (
-                            <div key={file.id} className="px-4 py-3 pl-8 flex items-start justify-between gap-3 border-t border-gray-100 dark:border-gray-700/80">
+                            <div key={file.id} className="px-4 py-2.5 pl-9 flex items-start justify-between gap-3 border-t border-gray-100 dark:border-gray-700/80">
                               <div className="min-w-0 flex-1">
                                 {editingId === file.id ? (
                                   <input
@@ -761,13 +768,23 @@ function FileManager({ onFileChange }) {
                             </button>
                           </td>
                         </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-10 pt-1 pb-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                            >
+                              Files in {item.name}
+                            </td>
+                          </tr>
+                        )}
                         {isExpanded &&
                           item.files.map((file) => (
                             <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                              <td className="px-6 py-4">
+                              <td className="px-10 py-4">
                                 {editingId === file.id ? (
                                   <input
-                                    type="text"
+                                    type="text" 
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
                                     className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary-500"
