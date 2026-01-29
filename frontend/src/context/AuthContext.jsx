@@ -79,8 +79,11 @@ export function AuthProvider({ children }) {
       setToken(storedToken)
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
       setIsAuthenticated(true)
-      // Fetch user info
-      fetchUserInfo().finally(() => setLoading(false))
+      // UI performance: don't block the whole app on /user/me.
+      // Mark loading as done immediately so the dashboard shell can render,
+      // then refresh user info in the background.
+      setLoading(false)
+      fetchUserInfo()
     } else {
       setLoading(false)
     }
