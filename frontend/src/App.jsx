@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import './App.css'
-import { Analytics } from "@vercel/analytics/next"
+
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
@@ -32,7 +32,6 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Auth />} />
-                <Analytics/>
               <Route
                 path="/"
                 element={
