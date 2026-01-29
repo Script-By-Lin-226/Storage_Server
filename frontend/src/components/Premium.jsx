@@ -52,6 +52,7 @@ function Premium() {
   const [submitting, setSubmitting] = useState(false)
   const [purchases, setPurchases] = useState([])
   const [activePurchase, setActivePurchase] = useState(null)
+  const [showAllPayments, setShowAllPayments] = useState(false)
 
   useEffect(() => {
     const fetchPurchases = async () => {
@@ -183,30 +184,30 @@ function Premium() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs sm:text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to dashboard</span>
           </button>
-          <div className="flex items-center gap-2">
-            <Crown className="w-6 h-6 text-amber-500" />
-            <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+            <span className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm truncate">
               Premium Storage Plans
             </span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <section className="text-center space-y-3">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <section className="text-center space-y-2 sm:space-y-3">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             Simple plans for every storage need
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">
+          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto text-xs sm:text-sm">
             Start with the free plan, and upgrade to Premium or Pro when you need more space. Pay easily with KBZ Pay
             or Wave.
           </p>
@@ -214,8 +215,8 @@ function Premium() {
 
         {/* Current subscription summary */}
         {activePurchase && (
-          <section className="grid gap-4 sm:gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center">
-            <div className="rounded-2xl border border-primary-200 dark:border-primary-800 bg-primary-50/80 dark:bg-primary-900/30 p-4 sm:p-5 flex items-center justify-between gap-3">
+          <section className="grid gap-4 sm:gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-stretch sm:items-center">
+            <div className="rounded-2xl border border-primary-200 dark:border-primary-800 bg-primary-50/80 dark:bg-primary-900/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300 mb-1">
                   Active plan
@@ -245,7 +246,7 @@ function Premium() {
 
             <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 p-4 text-xs text-gray-700 dark:text-gray-300 space-y-1.5">
               <p className="font-semibold text-gray-900 dark:text-white">Your payment history</p>
-              {purchases.slice(0, 3).map((p) => (
+              {(showAllPayments ? purchases : purchases.slice(0, 3)).map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-2 py-1">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -268,22 +269,35 @@ function Premium() {
                   </span>
                 </div>
               ))}
-              {purchases.length > 3 && (
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              {purchases.length > 3 && !showAllPayments && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllPayments(true)}
+                  className="text-[11px] text-primary-600 dark:text-primary-300 mt-1 underline underline-offset-2"
+                >
                   + {purchases.length - 3} more payments
-                </p>
+                </button>
+              )}
+              {purchases.length > 3 && showAllPayments && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllPayments(false)}
+                  className="text-[11px] text-primary-600 dark:text-primary-300 mt-1 underline underline-offset-2"
+                >
+                  Show less
+                </button>
               )}
             </div>
           </section>
         )}
 
-        <section className="grid gap-4 sm:gap-6 md:grid-cols-3">
+        <section className="grid gap-3 sm:gap-4 md:gap-6 md:grid-cols-3">
           {plans.map((plan) => (
             <button
               key={plan.id}
               type="button"
               onClick={() => setSelectedPlanId(plan.id)}
-              className={`relative group rounded-2xl border p-5 sm:p-6 text-left transition-all ${
+              className={`relative group rounded-2xl border p-4 sm:p-6 text-left transition-all ${
                 plan.id === selectedPlanId
                   ? 'border-primary-500 shadow-lg shadow-primary-500/10 bg-white dark:bg-gray-900'
                   : 'border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 hover:border-primary-400 hover:shadow-md'
@@ -294,8 +308,8 @@ function Premium() {
                   Popular
                 </div>
               )}
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h2>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h2>
                 {plan.id === 'free' ? (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-4 h-4" />
@@ -313,9 +327,11 @@ function Premium() {
               <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 {plan.storage_gb >= 1024 ? '1 TB' : `${plan.storage_gb} GB`}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{plan.priceLabel}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px]">{plan.description}</p>
-              <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-3">{plan.priceLabel}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 min-h-[32px] sm:min-h-[40px]">
+                {plan.description}
+              </p>
+              <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
                 {plan.features?.map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
@@ -345,16 +361,16 @@ function Premium() {
           ))}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start">
+        <section className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start">
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 sm:p-6 shadow-sm space-y-5"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-5"
           >
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-primary-500" />
               Complete your purchase
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
               Upload your payment transcript after sending the amount via KBZ Pay or Wave. We’ll review and upgrade
               your storage.
             </p>
@@ -476,7 +492,7 @@ function Premium() {
             </button>
           </form>
 
-          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/80 p-5 sm:p-6 text-sm text-gray-700 dark:text-gray-300 space-y-3">
+          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/80 p-4 sm:p-6 text-xs sm:text-sm text-gray-700 dark:text-gray-300 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">How it works</h3>
             <ol className="list-decimal list-inside space-y-1.5 text-xs sm:text-sm">
               <li>Select your preferred plan above.</li>
