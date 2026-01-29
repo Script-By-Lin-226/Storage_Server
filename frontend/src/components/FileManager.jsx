@@ -285,29 +285,15 @@ function FileManager({ onFileChange }) {
     }
   }
 
-  const filteredFiles = useMemo(() => {
-    let list = files.filter((f) =>
-      (f.filename || '').toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    const mult = sortDir === 'asc' ? 1 : -1
-    list = [...list].sort((a, b) => {
-      if (sortBy === 'name') {
-        return mult * ((a.filename || '').localeCompare(b.filename || '', undefined, { sensitivity: 'base' }))
-      }
-      if (sortBy === 'date') {
-        return mult * (new Date(a.created_at || 0) - new Date(b.created_at || 0))
-      }
-      return mult * ((a.size_bytes || 0) - (b.size_bytes || 0))
-    })
-    return list
-  }, [files, searchTerm, sortBy, sortDir])
-
   // Group files by top-level folder (based on filename path like "FOLDER/sub/file.ext")
+  // and apply filtering to include folders if they match the search term
   const structuredItems = useMemo(() => {
     const folders = {}
     const rootFiles = []
+    const searchLower = searchTerm.toLowerCase()
 
-    for (const file of filteredFiles) {
+    // First, group all files by folders
+    for (const file of files) {
       const name = file.filename || ''
       const parts = name.split('/')
 
@@ -335,12 +321,75 @@ function FileManager({ onFileChange }) {
       }
     }
 
-    const folderItems = Object.values(folders).sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    )
+    // Apply filtering: include folders if folder name matches OR if any file within matches
+    const filteredFolders = Object.values(folders)
+      .map((folder) => {
+        const folderNameMatches = folder.name.toLowerCase().includes(searchLower)
+        const filteredFiles = folder.files.filter((file) => {
+          const fileName = (file.displayName || file.filename || '').toLowerCase()
+          return fileName.includes(searchLower)
+        })
+        const hasMatchingFiles = filteredFiles.length > 0
 
-    return [...folderItems, ...rootFiles]
-  }, [filteredFiles])
+        // Include folder if folder name matches OR if it has matching files
+        if (folderNameMatches || hasMatchingFiles) {
+          return {
+            ...folder,
+            files: folderNameMatches ? folder.files : filteredFiles, // If folder matches, show all files; otherwise show only matching files
+          }
+        }
+        return null
+      })
+      .filter((f) => f !== null)
+
+    // Filter root files
+    const filteredRootFiles = rootFiles.filter((file) => {
+      const fileName = (file.displayName || file.filename || '').toLowerCase()
+      return fileName.includes(searchLower)
+    })
+
+    // Sort files within each folder and root files
+    const mult = sortDir === 'asc' ? 1 : -1
+    const sortFiles = (fileList) => {
+      return [...fileList].sort((a, b) => {
+        if (sortBy === 'name') {
+          return mult * ((a.displayName || a.filename || '').localeCompare(b.displayName || b.filename || '', undefined, { sensitivity: 'base' }))
+        }
+        if (sortBy === 'date') {
+          return mult * (new Date(a.created_at || 0) - new Date(b.created_at || 0))
+        }
+        return mult * ((a.size_bytes || 0) - (b.size_bytes || 0))
+      })
+    }
+
+    filteredFolders.forEach((folder) => {
+      folder.files = sortFiles(folder.files)
+    })
+    const sortedRootFiles = sortFiles(filteredRootFiles)
+
+    // Sort folders according to the selected sort option
+    filteredFolders.sort((a, b) => {
+      if (sortBy === 'name') {
+        return mult * (a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      }
+      if (sortBy === 'date') {
+        // Sort folders by the most recent file date (or oldest if ascending)
+        const aLatestDate = a.files.length > 0 
+          ? Math.max(...a.files.map(f => new Date(f.created_at || 0).getTime()))
+          : 0
+        const bLatestDate = b.files.length > 0 
+          ? Math.max(...b.files.map(f => new Date(f.created_at || 0).getTime()))
+          : 0
+        return mult * (aLatestDate - bLatestDate)
+      }
+      // Sort by size: total size of all files in folder
+      const aTotalSize = a.files.reduce((sum, f) => sum + (f.size_bytes || 0), 0)
+      const bTotalSize = b.files.reduce((sum, f) => sum + (f.size_bytes || 0), 0)
+      return mult * (aTotalSize - bTotalSize)
+    })
+
+    return [...filteredFolders, ...sortedRootFiles]
+  }, [files, searchTerm, sortBy, sortDir])
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -500,7 +549,7 @@ function FileManager({ onFileChange }) {
               </table>
             </div>
           </>
-        ) : filteredFiles.length === 0 ? (
+        ) : structuredItems.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
               <File className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 dark:text-gray-500" />
@@ -514,8 +563,53 @@ function FileManager({ onFileChange }) {
           </div>
         ) : (
           <>
+            {/* Mobile: sort/filter controls */}
+            <div className="md:hidden px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                Sort by
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('name')}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] border ${
+                    sortBy === 'name'
+                      ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  <span>Name</span>
+                  <SortIcon column="name" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort('size')}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] border ${
+                    sortBy === 'size'
+                      ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  <span>Size</span>
+                  <SortIcon column="size" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort('date')}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] border ${
+                    sortBy === 'date'
+                      ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  <span>Uploaded</span>
+                  <SortIcon column="date" />
+                </button>
+              </div>
+            </div>
+
             {/* Mobile: grouped card list (folders + files) */}
-            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 mt-4">
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 mt-1">
               {structuredItems.map((item, index) => {
                 if (item.type === 'folder') {
                   const isExpanded = !!expandedFolders[item.name]
@@ -711,7 +805,7 @@ function FileManager({ onFileChange }) {
               })}
             </div>
             {/* Desktop: table (grouped by folder) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className=" md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
