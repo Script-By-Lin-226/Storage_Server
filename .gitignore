@@ -8,3 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Cloudflare Tunnel credentials (sensitive)
+.cloudflared/
+*.pem
+*cloudflared*.json

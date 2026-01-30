@@ -277,9 +277,15 @@ async def download_file(id: int, session: AsyncSession, request: Optional[Reques
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
 
+    # Parse Range header for resumable downloads
+    range_header = request.headers.get("range") if request else None
+    start = 0
+    end = None
+    
     use_encryption = settings.encryption_key and is_encryption_available(settings.encryption_key)
+    
     if use_encryption:
-        # Read full file, decrypt, stream decrypted bytes
+        # For encrypted files, we need to decrypt first (range support is limited)
         async with aiofiles.open(file_path, "rb") as f:
             data = await f.read()
         try:
@@ -292,42 +298,99 @@ async def download_file(id: int, session: AsyncSession, request: Optional[Reques
                 detail="File could not be decrypted. Key may have changed or data is corrupted.",
             ) from e
         content_length = len(plain)
+        
+        # Parse range for encrypted files
+        if range_header:
+            range_match = range_header.replace("bytes=", "").split("-")
+            start = int(range_match[0]) if range_match[0] else 0
+            end = int(range_match[1]) if range_match[1] and range_match[1] else content_length - 1
+            start = max(0, min(start, content_length - 1))
+            end = max(start, min(end, content_length - 1))
+            content_length = end - start + 1
 
         async def decrypted_iterator():
-            offset = 0
-            while offset < content_length:
-                chunk = plain[offset : offset + DOWNLOAD_CHUNK_SIZE]
+            offset = start
+            end_pos = end if end is not None else len(plain) - 1
+            while offset <= end_pos:
+                chunk_size = min(DOWNLOAD_CHUNK_SIZE, end_pos - offset + 1)
+                chunk = plain[offset : offset + chunk_size]
                 offset += len(chunk)
                 yield chunk
 
+        headers = {
+            "Content-Disposition": f"attachment; filename=\"{file.filename}\"",
+            "Content-Length": str(content_length),
+            "Accept-Ranges": "bytes",
+        }
+        
+        if range_header:
+            headers["Content-Range"] = f"bytes {start}-{end}/{len(plain)}"
+            status_code = status.HTTP_206_PARTIAL_CONTENT
+        else:
+            status_code = status.HTTP_200_OK
+
+        # Increment download count (only on first request, not on range requests)
+        if not range_header or start == 0:
+            file.download_count = (file.download_count or 0) + 1
+            await session.commit()
+            await session.refresh(file)
+        
         return StreamingResponse(
             decrypted_iterator(),
             media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename={file.filename}",
-                "Content-Length": str(content_length),
-            },
+            headers=headers,
+            status_code=status_code,
         )
 
-    # Unencrypted: stream directly from disk
-    async def file_iterator(path):
+    # Unencrypted: stream directly from disk with range support
+    file_size = file_path.stat().st_size
+    
+    if range_header:
+        range_match = range_header.replace("bytes=", "").split("-")
+        start = int(range_match[0]) if range_match[0] else 0
+        end = int(range_match[1]) if range_match[1] and range_match[1] else file_size - 1
+        start = max(0, min(start, file_size - 1))
+        end = max(start, min(end, file_size - 1))
+        content_length = end - start + 1
+    else:
+        content_length = file_size
+
+    async def file_iterator(path, start_pos, end_pos):
         async with aiofiles.open(path, "rb") as f:
-            while chunk := await f.read(DOWNLOAD_CHUNK_SIZE):
+            await f.seek(start_pos)
+            remaining = end_pos - start_pos + 1 if end_pos is not None else None
+            while remaining is None or remaining > 0:
+                chunk_size = min(DOWNLOAD_CHUNK_SIZE, remaining) if remaining is not None else DOWNLOAD_CHUNK_SIZE
+                chunk = await f.read(chunk_size)
+                if not chunk:
+                    break
+                if remaining is not None:
+                    remaining -= len(chunk)
                 yield chunk
 
-    file_size = file_path.stat().st_size
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"{file.filename}\"",
+        "Content-Length": str(content_length),
+        "Accept-Ranges": "bytes",
+    }
+    
+    if range_header:
+        headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+    else:
+        status_code = status.HTTP_200_OK
 
-    # Increment download count
-    file.download_count = (file.download_count or 0) + 1
-    await session.commit()
-    await session.refresh(file)
+    # Increment download count (only on first request, not on range requests)
+    if not range_header or start == 0:
+        file.download_count = (file.download_count or 0) + 1
+        await session.commit()
+        await session.refresh(file)
+    
     return StreamingResponse(
-        file_iterator(file_path),
+        file_iterator(file_path, start, end),
         media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f"attachment; filename={file.filename}",
-            "Content-Length": str(file_size),
-        },
+        headers=headers,
+        status_code=status_code,
     )
 
 async def view_file_size(id: int, session: AsyncSession, request: Optional[Request] = None):

@@ -10,6 +10,7 @@ const StatsPanel = lazy(() => import('./StatsPanel'))
 const AdminPanel = lazy(() => import('./AdminPanel'))
 const Messages = lazy(() => import('./Messages'))
 const Profile = lazy(() => import('./Profile'))
+const UploadProgressBar = lazy(() => import('./UploadProgressBar'))
 
 function Dashboard() {
   const { logout, user } = useAuth()
@@ -173,6 +174,10 @@ function Dashboard() {
           </div>
         </div>
       </footer>
+
+      <Suspense fallback={null}>
+        <UploadProgressBar />
+      </Suspense>
 
       {showProfile && (
         <div className="fixed inset-0 z-40 flex justify-end">

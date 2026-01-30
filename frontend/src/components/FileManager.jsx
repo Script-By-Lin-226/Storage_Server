@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { useToast } from '../context/ToastContext'
+import { useUpload } from '../context/UploadContext'
 import {
   Upload,
   Download,
@@ -32,10 +33,9 @@ function FileRowSkeleton() {
 
 function FileManager({ onFileChange }) {
   const toast = useToast()
+  const { uploadFile } = useUpload()
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('date') // 'name' | 'date' | 'size'
   const [sortDir, setSortDir] = useState('desc') // 'asc' | 'desc'
@@ -81,43 +81,19 @@ function FileManager({ onFileChange }) {
     }
   }
 
-  const doUpload = async (file) => {
-    if (!file) return
-    const formData = new FormData()
-    formData.append('file', file)
-    try {
-      await axios.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (e) => {
-          const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 0
-          setUploadProgress(pct)
-        },
-      })
-      await fetchFiles()
-      if (onFileChange) onFileChange()
-      return true
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Upload failed'
-      setError(msg)
-      throw new Error(msg)
-    }
-  }
-
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
-    setUploadProgress(0)
     setError('')
-    try {
-      await doUpload(file)
-      toast.success('File uploaded successfully!')
-    } catch (err) {
-      toast.error(err.message || 'Upload failed')
-    } finally {
-      setUploading(false)
-      setUploadProgress(0)
-    }
+    
+    // Use background upload context - continues even if user navigates away
+    uploadFile(file, async () => {
+      await fetchFiles()
+      if (onFileChange) onFileChange()
+    }).catch(() => {
+      // Error already handled in UploadContext
+    })
+    
     e.target.value = ''
   }
 
@@ -125,39 +101,20 @@ function FileManager({ onFileChange }) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
     
-    setUploading(true)
-    setUploadProgress(0)
     setError('')
     
-    let uploaded = 0
-    let failed = 0
-    
+    // Upload all files in background
     for (const file of files) {
       if (file && !file.type?.startsWith('text/html')) {
-        try {
-          await doUpload(file)
-          uploaded++
-        } catch (err) {
-          failed++
-          console.error(`Failed to upload ${file.name}:`, err)
-        }
-        // Update progress
-        setUploadProgress(Math.round(((uploaded + failed) / files.length) * 100))
+        uploadFile(file, async () => {
+          await fetchFiles()
+          if (onFileChange) onFileChange()
+        }).catch(() => {
+          // Error already handled in UploadContext
+        })
       }
     }
     
-    if (uploaded > 0) {
-      toast.success(`Successfully uploaded ${uploaded} file${uploaded > 1 ? 's' : ''}`)
-    }
-    if (failed > 0) {
-      toast.error(`Failed to upload ${failed} file${failed > 1 ? 's' : ''}`)
-    }
-    
-    await fetchFiles()
-    if (onFileChange) onFileChange()
-    
-    setUploading(false)
-    setUploadProgress(0)
     e.target.value = ''
   }
 
@@ -168,39 +125,27 @@ function FileManager({ onFileChange }) {
     const first = files[0]
     if (!first) return
     
-    setUploading(true)
-    setUploadProgress(0)
     setError('')
     
-    try {
-      // For premium tiers allow multiple drag-drop uploads
-      if (planTier !== 'basic') {
-        let uploaded = 0
-        let failed = 0
-        for (const file of files) {
-          if (file && !file.type?.startsWith('text/html')) {
-            try {
-              await doUpload(file)
-              uploaded++
-            } catch (err) {
-              failed++
-            }
-            setUploadProgress(Math.round(((uploaded + failed) / files.length) * 100))
-          }
+    // For premium tiers allow multiple drag-drop uploads
+    if (planTier !== 'basic') {
+      for (const file of files) {
+        if (file && !file.type?.startsWith('text/html')) {
+          uploadFile(file, async () => {
+            await fetchFiles()
+            if (onFileChange) onFileChange()
+          }).catch(() => {
+            // Error already handled in UploadContext
+          })
         }
-        if (uploaded > 0) toast.success(`Successfully uploaded ${uploaded} file${uploaded > 1 ? 's' : ''}`)
-        if (failed > 0) toast.error(`Failed to upload ${failed} file${failed > 1 ? 's' : ''}`)
-      } else if (first && !first.type?.startsWith('text/html')) {
-        await doUpload(first)
-        toast.success('File uploaded successfully!')
       }
-      await fetchFiles()
-      if (onFileChange) onFileChange()
-    } catch (err) {
-      toast.error(err.message || 'Upload failed')
-    } finally {
-      setUploading(false)
-      setUploadProgress(0)
+    } else if (first && !first.type?.startsWith('text/html')) {
+      uploadFile(first, async () => {
+        await fetchFiles()
+        if (onFileChange) onFileChange()
+      }).catch(() => {
+        // Error already handled in UploadContext
+      })
     }
   }
 
@@ -212,19 +157,36 @@ function FileManager({ onFileChange }) {
 
   const handleDownload = async (fileId, filename) => {
     try {
-      const response = await axios.get(`/files/${fileId}/download`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
+      // Use direct download link for better performance and large file support
+      // Browser's native download manager handles the file, supports resumable downloads
+      // and avoids loading entire file into memory
+      const baseUrl = axios.defaults.baseURL || '/api'
+      const token = localStorage.getItem('token')
+      
+      // Create download URL with token as query parameter for authentication
+      // This allows browser's native download manager to handle the file efficiently
+      const downloadUrl = token 
+        ? `${baseUrl}/files/${fileId}/download?token=${encodeURIComponent(token)}`
+        : `${baseUrl}/files/${fileId}/download`
+      
+      // Create a temporary link and trigger download
+      // Browser will handle the download natively, supporting pause/resume
       const link = document.createElement('a')
-      link.href = url
+      link.href = downloadUrl
       link.setAttribute('download', filename)
+      link.style.display = 'none'
+      
       document.body.appendChild(link)
       link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      document.body.removeChild(link)
+      
       toast.success('Download started')
-      // Refresh so download_count updates
-      await fetchFiles()
-      if (onFileChange) onFileChange()
+      
+      // Refresh file list after a short delay to update download count
+      setTimeout(async () => {
+        await fetchFiles()
+        if (onFileChange) onFileChange()
+      }, 1000)
     } catch (err) {
       setError('Failed to download file')
       toast.error('Failed to download file')
@@ -452,7 +414,7 @@ function FileManager({ onFileChange }) {
               </div>
             </div>
             <>
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
               {planTier !== 'basic' && (
                 <input
                   ref={folderInputRef}
@@ -461,7 +423,6 @@ function FileManager({ onFileChange }) {
                   webkitdirectory="true"
                   multiple
                   onChange={handleFolderUpload}
-                  disabled={uploading}
                 />
               )}
             </>
@@ -469,7 +430,6 @@ function FileManager({ onFileChange }) {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
                 className="touch-target inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition disabled:opacity-50 text-sm sm:text-base"
               >
                 <Upload className="w-5 h-5 shrink-0" />
@@ -479,7 +439,6 @@ function FileManager({ onFileChange }) {
                 <button
                   type="button"
                   onClick={() => folderInputRef.current?.click()}
-                  disabled={uploading}
                   className="touch-target inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 text-xs sm:text-sm"
                 >
                   <Upload className="w-4 h-4 shrink-0" />
@@ -497,23 +456,6 @@ function FileManager({ onFileChange }) {
               </button>
             </div>
           </div>
-          {uploading && (
-            <div className="mt-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-primary-600 dark:text-primary-400 animate-spin" />
-                  <span className="text-sm font-medium text-primary-700 dark:text-primary-300">Uploading...</span>
-                </div>
-                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-primary-100 dark:bg-primary-900/40 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-primary-600 dark:bg-primary-500 h-2.5 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
           {dragOver && (
             <div className="mt-4 py-8 border-2 border-dashed border-primary-500 dark:border-primary-400 rounded-xl bg-primary-50 dark:bg-primary-900/30 text-center">
               <Upload className="w-12 h-12 mx-auto mb-3 text-primary-600 dark:text-primary-400 animate-bounce" />

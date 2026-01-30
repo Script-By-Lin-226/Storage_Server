@@ -21,7 +21,7 @@ app = FastAPI(description="Storage Server", version="22.1.2026", lifespan=life_c
 # Explicitly list frontend origins (Vite dev server, etc.).
 allowed_origins = [
     "http://localhost:3000",
-    "https://open-vault.vercel.app",
+    "https://www.ktt-storage-server.site",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",

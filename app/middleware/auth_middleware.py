@@ -23,11 +23,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if getattr(request.state, "user", None):
             return await call_next(request)
 
-        # Check for token in Authorization header first, then cookies
+        # Check for token in Authorization header first, then query params (for direct downloads), then cookies
         access_token = None
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             access_token = auth_header.split(" ")[1]
+        elif request.url.path.endswith("/download") and "token" in request.query_params:
+            # Allow token in query string for direct download links (one-time use)
+            access_token = request.query_params.get("token")
         else:
             access_token = request.cookies.get("access_token")
         
